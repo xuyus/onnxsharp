@@ -1,1 +1,2 @@
-# onnx-sharp
+
+pip install -e .
