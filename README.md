@@ -1,7 +1,7 @@
 
 ## ONNX Graph Editor
 
-Edit Your ONNX Model With Few Lines of Changes.
+Edit Your ONNX Model With Few Lines of Codes.
 
 Search Nodes:
 
