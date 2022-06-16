@@ -1,39 +1,43 @@
 import onnx
 import argparse
+from onnxsharp import Model, Graph, Node
 
 
-def parse_args(args=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--src", type=str)
-    return parser.parse_args(args=args)
-
-
-def main(args=None):
-    args = parse_args(args)
-    model_proto = onnx.load(args.src)
-
-    from onnxsharp import Model, Graph, Node
-
+def test_subgraph_extraction():
+    src = "./testdata/ort_sample_model.onnx"
+    model_proto = onnx.load(src)
     m = Model.from_proto(model_proto)
-    inputs_of_yield = []
 
-    def func(node: Node):
+    inputs_of_yield = set()
+
+    def output_filter_func(node: Node):
         if node.type == "YieldOp":
             for i in node.input_arg_names:
-                if i not in inputs_of_yield:
-                    inputs_of_yield.append(i)
+                inputs_of_yield.add(i)
 
     print(inputs_of_yield)
-    m._graph.iterate_node(func)
+    m._graph.iterate_node(output_filter_func)
+
+    subgraph_inputs = set()
+
+    def input_filter_func(node: Node):
+        if node.type == "Gemm" and node.name == "Gemm_0":
+            for i in node.input_arg_names:
+                subgraph_inputs.add(i)
+
+    print(subgraph_inputs)
+    m._graph.iterate_node(input_filter_func)
+
     subgraph_info = Graph.LogicalSubgraphInfo(
-        inputs_of_yield,
-        [],
+        list(inputs_of_yield),
+        list(subgraph_inputs),
     )
 
     subgraph = Graph.from_logical_subgraph(m._graph, subgraph_info)
     new_m = Model.copy_config(m, subgraph)
-    onnx.save(new_m.to_proto(), "pengwa_new_06_15.onnx")
 
+    tmp_filename = "/tmp/abc.onnx"
+    onnx.save(new_m.to_proto(), tmp_filename)
 
-if __name__ == "__main__":
-    main()
+    model_proto2 = onnx.load(tmp_filename)
+    m2 = Model.from_proto(model_proto2)

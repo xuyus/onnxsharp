@@ -230,6 +230,61 @@ class Graph(object):
 
         self._output_map[output_arg_name] = value_info
 
+    def add_node(
+        self,
+        type: str,
+        name: str,
+        input_arg_names: list[str],
+        output_arg_names: list[str],
+        domain: str,
+        doc_string: str,
+        **kwargs,
+    ):
+        for input_arg_name in input_arg_names:
+            enforce(
+                not self.is_output(input_arg_name),
+                f"{input_arg_name} already exists as output.",
+            )
+            enforce(
+                self.is_activation(input_arg_name)
+                or self.is_input(input_arg_name)
+                or self.is_initializer(input_arg_name),
+                f"{input_arg_name} already exists as activation/input/initializer.",
+            )
+
+        for output_arg_name in output_arg_names:
+            enforce(
+                not self.is_input(output_arg_name),
+                f"{output_arg_name} already exists as input.",
+            )
+            enforce(
+                not self.is_output(output_arg_name),
+                f"{output_arg_name} already exists as output.",
+            )
+            enforce(
+                not self.is_initializer(output_arg_name),
+                f"{output_arg_name} already exists as initializer.",
+            )
+            enforce(
+                self.is_activation(output_arg_name),
+                f"{output_arg_name} already exists as activation.",
+            )
+
+        n = Node()
+        n._g = self
+        n._name = name
+        n._type = type
+        n._input_args = [NodeArg(i) for i in input_arg_names]
+        n._output_args = [NodeArg(o) for o in output_arg_names]
+        n._domain = domain
+
+        for attr_name, attr_value in kwargs.items():
+            n._attr[attr_name] = attr_value
+
+        n._doc_string = doc_string
+        self.update_node_mapping(n)
+        return n
+
     def remove_input(self, input_arg_name):
         enforce(
             self.is_input(input_arg_name), "remove_input cannot remove non graph input."
@@ -323,7 +378,7 @@ class Graph(object):
 
     @classmethod
     def from_logical_subgraph(cls, g, subgraph_info: LogicalSubgraphInfo):
-        g.extract_sub_graph_nodes(subgraph_info)
+        g.extract_sub_graph_nodes(subgraph_info, True)
         new_g = Graph()
 
         print("building nodes....")
@@ -352,6 +407,13 @@ class Graph(object):
             new_g.add_input(input_name, value_info)
 
         for input_name in subgraph_info._activation_as_subgraph_inputs:
+            # Skip when input_name already in new_g.
+            if (
+                new_g.is_input(input_name)
+                or new_g.is_activation(input_name)
+                or new_g.is_initializer(input_name)
+            ):
+                continue
             (n, output_index) = g.get_node_with_index(input_name)
             value_info: ValueInfo = copy.deepcopy(
                 n.output_args(output_index)._value_info
@@ -374,7 +436,98 @@ class Graph(object):
 
         return new_g
 
-    def extract_sub_graph_nodes(self, subgraph_info: LogicalSubgraphInfo):
+    def bfs_from_output(
+        self, output_arg_names, initializer_func, input_func, activation_func
+    ):
+        arg_name_queue = copy.deepcopy(output_arg_names)
+        visited_arg_names = []
+        while arg_name_queue:
+            cur_arg_name = arg_name_queue.pop(0)
+            if self.is_null(cur_arg_name):
+                continue
+
+            if cur_arg_name not in visited_arg_names:
+                visited_arg_names.append(cur_arg_name)
+            else:
+                # skip if arg already be processed.
+                # print(
+                #     f">>>> [current arg name: {cur_arg_name}] skip since arg {cur_arg_name} already visited"
+                # )
+                continue
+
+            # handle initializer or input args.
+            if self.is_initializer(cur_arg_name) or self.is_input(cur_arg_name):
+                if self.is_initializer(cur_arg_name):
+                    initializer_func(cur_arg_name)
+
+                if self.is_input(cur_arg_name):
+                    input_func(cur_arg_name)
+
+                continue
+
+            # append input args of current node into queue.
+            if self.is_activation(cur_arg_name):
+                # handle activation args.
+                skip = activation_func(cur_arg_name)
+                if skip is True:
+                    continue
+
+                # append inputs into queue.
+                current_node = self.get_node(cur_arg_name)
+                for arg_name in current_node.input_arg_names:
+                    if arg_name in visited_arg_names or arg_name in arg_name_queue:
+                        # skip if arg already processed, or arg already in queue
+                        # print(
+                        #     f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] skip adding into queue since arg {arg_name} already visited"
+                        # )
+                        continue
+                    # print(
+                    #     f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] add input - {arg_name} into queue."
+                    # )
+                    arg_name_queue.append(arg_name)
+
+    def bfs_from_input(self, input_arg_names, output_func, non_output_func):
+        arg_name_queue = copy.deepcopy(input_arg_names)
+        visited_arg_names = []
+        while arg_name_queue:
+            cur_arg_name = arg_name_queue.pop(0)
+            if self.is_null(cur_arg_name):
+                continue
+
+            if cur_arg_name not in visited_arg_names:
+                visited_arg_names.append(cur_arg_name)
+            else:
+                # skip if arg already be processed.
+                # print(
+                #     f">>>> [current arg name: {cur_arg_name}] skip since arg {cur_arg_name} already visited"
+                # )
+                continue
+
+            # handle output args.
+            if self.is_output(cur_arg_name):
+                output_func(cur_arg_name)
+                continue
+
+            # handle initializer/input/activation args.
+            non_output_func(cur_arg_name)
+            # append output args of consumer nodes into queue.
+            nodes = self.get_consumer_nodes(cur_arg_name)
+            for n in nodes:
+                for arg_name in n.output_arg_names:
+                    if arg_name in visited_arg_names or arg_name in arg_name_queue:
+                        # skip if arg already processed, or arg already in queue
+                        # print(
+                        #     f">>>> [current arg name: {cur_arg_name}, owning node: {n.name}({n.type})] skip adding into queue since arg {arg_name} already visited"
+                        # )
+                        continue
+                    # print(
+                    #     f">>>> [current arg name: {cur_arg_name}, owning node: {n.name}({n.type})] add input - {arg_name} into queue."
+                    # )
+                    arg_name_queue.append(arg_name)
+
+    def extract_sub_graph_nodes(
+        self, subgraph_info: LogicalSubgraphInfo, strict_input_match: bool = False
+    ):
         """Return nodes of subgraph ending with dest_node.
         Args:
             dest_node: output node of the subgraph to find
@@ -382,11 +535,73 @@ class Graph(object):
         Return:
             a set of nodes
         """
+
         output_arg_names = subgraph_info._boundary_output_arg_names
         input_arg_names = subgraph_info._boundary_input_arg_names
 
         print(
-            f">>extract_sub_graph - outputs: {output_arg_names}, inputs: {input_arg_names}"
+            f">>extract_sub_graph - user given outputs: {output_arg_names}, inputs: {input_arg_names}"
+        )
+
+        if strict_input_match is True:
+            reachable_input_arg_names = set()
+
+            def collect_arg_names(arg_name):
+                reachable_input_arg_names.add(arg_name)
+                return False
+
+            self.bfs_from_output(
+                output_arg_names,
+                collect_arg_names,
+                collect_arg_names,
+                collect_arg_names,
+            )
+
+            # print(f"reachable_input_arg_names: {reachable_input_arg_names}")
+
+            origin_input_arg_names = copy.deepcopy(list(input_arg_names))
+            input_arg_names = []
+            for i in origin_input_arg_names:
+                if i in reachable_input_arg_names and i not in input_arg_names:
+                    input_arg_names.append(i)
+
+            print(
+                f">>extract_sub_graph - strict mode, user given input arg name count: {len(origin_input_arg_names)}, corrected input arg name count: {len(input_arg_names)}"
+            )
+
+            enforce(
+                len(input_arg_names) > 0,
+                "in strict mode, input_arg_names should not be empty.",
+            )
+
+            reachable_output_arg_names = set()
+
+            def collect_output_arg_names(arg_name):
+                reachable_output_arg_names.add(arg_name)
+
+            self.bfs_from_input(
+                input_arg_names,
+                collect_output_arg_names,
+                collect_output_arg_names,
+            )
+
+            origin_output_arg_names = copy.deepcopy(list(output_arg_names))
+            output_arg_names = []
+            for o in origin_output_arg_names:
+                if o in reachable_output_arg_names and o not in output_arg_names:
+                    output_arg_names.append(o)
+
+            print(
+                f">>extract_sub_graph - strict mode, user given output arg name count: {len(origin_output_arg_names)}, corrected output arg name count: {len(output_arg_names)}"
+            )
+
+            enforce(
+                len(output_arg_names) > 0,
+                "in strict mode, input_arg_names should not be empty.",
+            )
+
+        print(
+            f">>extract_sub_graph - refined outputs: {output_arg_names}, inputs: {input_arg_names}"
         )
 
         enforce(
@@ -398,65 +613,51 @@ class Graph(object):
             "Find duplicated input arg names",
         )
 
-        arg_name_queue = copy.deepcopy(output_arg_names)
-        visited_arg_names = []
-
         subgraph_nodes: list[str] = []
         initializer_as_subgraph_initializers = []
         activation_as_subgraph_inputs = []
         input_as_subgraph_inputs = []
-        while arg_name_queue:
-            cur_arg_name = arg_name_queue.pop(0)
-            if self.is_null(cur_arg_name):
-                continue
 
-            if cur_arg_name not in visited_arg_names:
-                visited_arg_names.append(cur_arg_name)
+        def initializer_func(arg_name):
+            if strict_input_match is True:
+                if arg_name in input_arg_names:
+                    initializer_as_subgraph_initializers.append(arg_name)
             else:
-                # skip if arg already be processed.
+                initializer_as_subgraph_initializers.append(arg_name)
                 print(
-                    f">>>> [current arg name: {cur_arg_name}] skip since arg {cur_arg_name} already visited"
+                    f">>>> [current arg name: {arg_name}] skip initializer arg {arg_name}"
                 )
-                continue
+            return True
 
-            if self.is_initializer(cur_arg_name) or self.is_input(cur_arg_name):
-                if self.is_initializer(cur_arg_name):
-                    initializer_as_subgraph_initializers.append(cur_arg_name)
-                    print(
-                        f">>>> [current arg name: {cur_arg_name}] skip initializer arg {cur_arg_name}"
-                    )
+        def input_func(arg_name):
+            if strict_input_match is True:
+                if arg_name in input_arg_names:
+                    input_as_subgraph_inputs.append(arg_name)
+            else:
+                input_as_subgraph_inputs.append(arg_name)
+                print(
+                    f">>>> [current arg name: {arg_name}] skip graph input arg {arg_name}"
+                )
+            return True
 
-                if self.is_input(cur_arg_name):
-                    input_as_subgraph_inputs.append(cur_arg_name)
-                    print(
-                        f">>>> [current arg name: {cur_arg_name}] skip graph input arg {cur_arg_name}"
-                    )
-
-                continue
-
-            # append input args of current node into queue.
-            if self.is_activation(cur_arg_name):
-                # reach the activation boundary user specified as inputs.
-                if cur_arg_name in input_arg_names:
-                    activation_as_subgraph_inputs.append(cur_arg_name)
-                    continue
-
-                current_node = self.get_node(cur_arg_name)
+        def activation_func(arg_name):
+            current_node = self.get_node(arg_name)
+            # reach the activation boundary user specified as inputs.
+            if arg_name in input_arg_names:
+                activation_as_subgraph_inputs.append(arg_name)
+                return True  # skip futhur processing.
+            elif arg_name in reachable_output_arg_names:
+                # Only add the node when it is reachable from outputs.
                 subgraph_nodes.append(current_node.name)
+                return False
+            else:
+                return True
 
-                for arg_name in current_node.input_arg_names:
-                    if arg_name in visited_arg_names or arg_name in arg_name_queue:
-                        # skip if arg already processed, or arg already in queue
-                        print(
-                            f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] skip adding into queue since arg {arg_name} already visited"
-                        )
-                        continue
-                    print(
-                        f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] add input - {arg_name} into queue."
-                    )
-                    arg_name_queue.append(arg_name)
+        self.bfs_from_output(
+            output_arg_names, initializer_func, input_func, activation_func
+        )
 
-        print(f">>extract_sub_graph - check subgraph node closure.")
+        print(f">>extract_sub_graph - check subgraph node closure. {subgraph_nodes}")
         # For all visited args, besides the output_args, all other args should only be consumed by the nodes in this subgraph.
         output_as_subgraph_outputs = []
         activation_as_subgraph_outputs = []
