@@ -97,17 +97,21 @@ class Graph(object):
         )
         return self._initializer_map[output_arg_name]
 
-    def get_node(self, output_arg_name: str) -> Node:
-        n, _ = self.get_node_with_index(output_arg_name)
-        return n
-
-    def get_node_with_index(self, output_arg_name: str) -> tuple[Node, int]:
+    def get_node_with_output_arg_name(self, output_arg_name: str) -> tuple[Node, int]:
         enforce(output_arg_name is not None, "output_arg_name should not be None")
         enforce(
             output_arg_name in self._output_arg_name_to_node_mapping,
             f"output_arg_name {output_arg_name} not exists",
         )
         return self._output_arg_name_to_node_mapping[output_arg_name]
+
+    def get_node_with_name(self, node_name: str) -> Node:
+        enforce(node_name is not None, "node_name should not be None")
+        enforce(
+            node_name in self._node_name_mapping,
+            f"node name {node_name} not exists",
+        )
+        return self._node_name_mapping[node_name]
 
     def get_consumer_nodes(self, output_arg_name: str):
         nodes: set[Node] = set()
@@ -377,7 +381,9 @@ class Graph(object):
             self._activation_as_subgraph_outputs = []
 
     @classmethod
-    def from_logical_subgraph(cls, g, subgraph_info: LogicalSubgraphInfo):
+    def from_logical_subgraph(
+        cls, g, subgraph_info: LogicalSubgraphInfo, drop_initializers=False
+    ):
         g.extract_sub_graph_nodes(subgraph_info, True)
         new_g = Graph()
 
@@ -391,7 +397,7 @@ class Graph(object):
 
         new_g._name = g._name
 
-        skip_build_initializer = True
+        skip_build_initializer = drop_initializers
         if skip_build_initializer is False:
             print("building initializers....")
             for initializer_name in subgraph_info._initializer_as_subgraph_initializers:
@@ -414,7 +420,7 @@ class Graph(object):
                 or new_g.is_initializer(input_name)
             ):
                 continue
-            (n, output_index) = g.get_node_with_index(input_name)
+            n, output_index = g.get_node_with_output_arg_name(input_name)
             value_info: ValueInfo = copy.deepcopy(
                 n.output_args(output_index)._value_info
             )
@@ -425,23 +431,65 @@ class Graph(object):
             value_info: ValueInfo = copy.deepcopy(g._output_map[output_arg_name])
             new_g.add_output(output_arg_name, value_info)
 
-        for o in set(subgraph_info._activation_as_subgraph_outputs):
-            (n, output_index) = g.get_node_with_index(o)
+        for output_arg_name in subgraph_info._boundary_output_arg_names:
+            if new_g.is_output(output_arg_name):
+                continue
+
+            n, output_index = g.get_node_with_output_arg_name(output_arg_name)
             value_info: ValueInfo = copy.deepcopy(
                 n.output_args(output_index)._value_info
             )
+            new_g.add_output(output_arg_name, value_info)
 
-            print(f"add activation {o} as graph output {value_info}")
-            new_g.add_output(o, value_info)
+        for o in set(subgraph_info._activation_as_subgraph_outputs):
+            n, output_index = g.get_node_with_output_arg_name(o)
+            node_arg: NodeArg = copy.deepcopy(n.output_args(output_index))
+            new_out_name = f"{o}_activation_as_output"
+            node_arg._name = new_out_name
+
+            n.replace_output_arg(o, node_arg)
+
+        print("building complete....")
 
         return new_g
 
     def bfs_from_output(
-        self, output_arg_names, initializer_func, input_func, activation_func
+        self,
+        output_arg_names,
+        initializer_func,
+        input_func,
+        activation_func,
+        stop_search_level=None,
+        stop_search_queue=None,
     ):
         arg_name_queue = copy.deepcopy(output_arg_names)
+        next_level_queue = []
         visited_arg_names = []
-        while arg_name_queue:
+        level = 0
+        while True:
+            # switch to next level.
+            if len(arg_name_queue) == 0:
+                level += 1
+
+                if stop_search_level is not None and level >= stop_search_level:
+                    print(
+                        "stop search at level",
+                        level,
+                        "put next level queue in next_level_queue"
+                        if stop_search_queue is not None
+                        else "",
+                    )
+
+                    if stop_search_queue is not None:
+                        stop_search_queue = copy.deepcopy(next_level_queue)
+                    break
+
+                arg_name_queue = copy.deepcopy(next_level_queue)
+                next_level_queue = []
+
+            if len(arg_name_queue) == 0:
+                break
+
             cur_arg_name = arg_name_queue.pop(0)
             if self.is_null(cur_arg_name):
                 continue
@@ -473,9 +521,13 @@ class Graph(object):
                     continue
 
                 # append inputs into queue.
-                current_node = self.get_node(cur_arg_name)
+                current_node, _ = self.get_node_with_output_arg_name(cur_arg_name)
                 for arg_name in current_node.input_arg_names:
-                    if arg_name in visited_arg_names or arg_name in arg_name_queue:
+                    if (
+                        arg_name in visited_arg_names
+                        or arg_name in arg_name_queue
+                        or arg_name in next_level_queue
+                    ):
                         # skip if arg already processed, or arg already in queue
                         # print(
                         #     f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] skip adding into queue since arg {arg_name} already visited"
@@ -484,7 +536,7 @@ class Graph(object):
                     # print(
                     #     f">>>> [current arg name: {cur_arg_name}, owning node: {current_node.name}({current_node.type})] add input - {arg_name} into queue."
                     # )
-                    arg_name_queue.append(arg_name)
+                    next_level_queue.append(arg_name)
 
     def bfs_from_input(self, input_arg_names, output_func, non_output_func):
         arg_name_queue = copy.deepcopy(input_arg_names)
@@ -526,7 +578,9 @@ class Graph(object):
                     arg_name_queue.append(arg_name)
 
     def extract_sub_graph_nodes(
-        self, subgraph_info: LogicalSubgraphInfo, strict_input_match: bool = False
+        self,
+        subgraph_info: LogicalSubgraphInfo,
+        strict_input_output_match: bool = False,
     ):
         """Return nodes of subgraph ending with dest_node.
         Args:
@@ -543,7 +597,12 @@ class Graph(object):
             f">>extract_sub_graph - user given outputs: {output_arg_names}, inputs: {input_arg_names}"
         )
 
-        if strict_input_match is True:
+        if strict_input_output_match is True:
+            enforce(
+                len(output_arg_names) > 0 and len(input_arg_names) > 0,
+                "when strict match is enabled, neither of input or output can be empty.",
+            )
+
             reachable_input_arg_names = set()
 
             def collect_arg_names(arg_name):
@@ -558,7 +617,6 @@ class Graph(object):
             )
 
             # print(f"reachable_input_arg_names: {reachable_input_arg_names}")
-
             origin_input_arg_names = copy.deepcopy(list(input_arg_names))
             input_arg_names = []
             for i in origin_input_arg_names:
@@ -600,6 +658,9 @@ class Graph(object):
                 "in strict mode, input_arg_names should not be empty.",
             )
 
+        subgraph_info._boundary_output_arg_names = copy.deepcopy(output_arg_names)
+        subgraph_info._boundary_input_arg_names = copy.deepcopy(input_arg_names)
+
         print(
             f">>extract_sub_graph - refined outputs: {output_arg_names}, inputs: {input_arg_names}"
         )
@@ -619,7 +680,7 @@ class Graph(object):
         input_as_subgraph_inputs = []
 
         def initializer_func(arg_name):
-            if strict_input_match is True:
+            if strict_input_output_match is True:
                 if arg_name in input_arg_names:
                     initializer_as_subgraph_initializers.append(arg_name)
             else:
@@ -630,7 +691,7 @@ class Graph(object):
             return True
 
         def input_func(arg_name):
-            if strict_input_match is True:
+            if strict_input_output_match is True:
                 if arg_name in input_arg_names:
                     input_as_subgraph_inputs.append(arg_name)
             else:
@@ -641,7 +702,7 @@ class Graph(object):
             return True
 
         def activation_func(arg_name):
-            current_node = self.get_node(arg_name)
+            current_node, _ = self.get_node_with_output_arg_name(arg_name)
             # reach the activation boundary user specified as inputs.
             if arg_name in input_arg_names:
                 activation_as_subgraph_inputs.append(arg_name)
@@ -758,7 +819,7 @@ class Graph(object):
                 if not self.is_activation(arg_name):
                     continue
 
-                j = self.get_node(arg_name)
+                j, _ = self.get_node_with_output_arg_name(arg_name)
                 enforce(
                     j is not None, f"Node not found to generate output arg {arg_name}"
                 )

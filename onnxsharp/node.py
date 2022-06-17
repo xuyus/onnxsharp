@@ -48,6 +48,12 @@ class ValueInfo(object):
 
         return value_info_proto
 
+    def __str__(self) -> str:
+        return f"ValueInfo - name: {self._name}, tensor type: {self._type}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class AttributeType:
     UNDEFINED = 0
@@ -176,6 +182,12 @@ class NodeArg(object):
     def to_proto(self):
         return self._value_info.to_proto()
 
+    def __str__(self) -> str:
+        return f"NodeArg - name: {self._name}, value_info: {self._value_info}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class Node(object):
     def __init__(self) -> None:
@@ -297,7 +309,7 @@ class Node(object):
         return node_proto
 
     def __str__(self):
-        return f"Node: name - {self._name}, type - {self.type}, \n\tinputs - {self.input_arg_names}, outputs - {self.output_arg_names}\n"
+        return f"Node: name - {self._name}, type - {self.type}, inputs - {self.input_arg_names}, outputs - {self.output_arg_names}"
 
     def __repr__(self):
         return str(self)

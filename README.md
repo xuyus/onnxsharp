@@ -8,7 +8,7 @@ Search Nodes:
     model_proto = onnx.load(args.src)
     from onnxsharp import Model, Graph, Node
     m = Model.from_proto(model_proto)
-    n = m._graph.get_node("onnx::Cast_565")
+    n, out_index = m._graph.get_node_with_output_arg_name("onnx::Cast_565")
     print(n)
     print(m._graph.get_consumer_nodes("onnx::Cast_565"))
 

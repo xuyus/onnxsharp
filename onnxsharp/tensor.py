@@ -27,6 +27,12 @@ class TensorShape(object):
         tensor_shape_proto.dim.extend(dim_protos)
         return tensor_shape_proto
 
+    def __str__(self) -> str:
+        return f"TensorShape - dims: {self._dim}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class TensorType(Type):
     def __init__(self, tensor_type_proto) -> None:
@@ -42,6 +48,12 @@ class TensorType(Type):
         tensor_type_proto.elem_type = self._elem_type
         tensor_type_proto.shape.CopyFrom(self._shape.to_proto())
         return type_proto
+
+    def __str__(self) -> str:
+        return f"TensorType - elem_type: {self._elem_type}, shape: {self._shape}"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class Tensor(object):

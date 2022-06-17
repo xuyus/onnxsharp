@@ -16,44 +16,51 @@ def main(args=None):
 
     m = Model.from_proto(model_proto)
 
-    inputs_of_yield = []
+    use_yield = False
+    if use_yield is True:
+        inputs_of_yield = []
 
-    def func(node: Node):
-        if node.type == "YieldOp":
-            for i in node.input_arg_names:
-                if i not in inputs_of_yield:
-                    inputs_of_yield.append(i)
+        def func(node: Node):
+            if node.type == "YieldOp":
+                for i in node.input_arg_names:
+                    if i not in inputs_of_yield:
+                        inputs_of_yield.append(i)
 
-    print(inputs_of_yield)
-    m._graph.iterate_node(func)
+        print(inputs_of_yield)
+        m._graph.iterate_node(func)
 
-    # inputs_of_classifier = set(["input1", "input", "output-0_grad"])
-    inputs_of_classifier = set()
+        # inputs_of_classifier = set(["input1", "input", "output-0_grad"])
+        inputs_of_classifier = set()
 
-    def classifier_func(node: Node):
-        input_arg_names = node.input_arg_names
-        if (
-            node.type == "Gemm"
-            and len(input_arg_names) > 2
-            and "_original_module.classifier" in input_arg_names[1]
-            and input_arg_names[1].endswith(".weight")
-            and "_original_module.classifier" in input_arg_names[2]
-            and input_arg_names[2].endswith(".bias")
-        ):
-            for i in input_arg_names:
-                inputs_of_classifier.add(i)
+        def classifier_func(node: Node):
+            input_arg_names = node.input_arg_names
+            if (
+                node.type == "Gemm"
+                and len(input_arg_names) > 2
+                and "_original_module.classifier" in input_arg_names[1]
+                and input_arg_names[1].endswith(".weight")
+                and "_original_module.classifier" in input_arg_names[2]
+                and input_arg_names[2].endswith(".bias")
+            ):
+                for i in input_arg_names:
+                    inputs_of_classifier.add(i)
 
-    print(inputs_of_classifier)
-    m._graph.iterate_node(classifier_func)
+        print(inputs_of_classifier)
+        m._graph.iterate_node(classifier_func)
 
-    subgraph_info = Graph.LogicalSubgraphInfo(
-        inputs_of_yield,
-        list(inputs_of_classifier),
-    )
+        subgraph_info = Graph.LogicalSubgraphInfo(
+            inputs_of_yield,
+            list(inputs_of_classifier),
+        )
+    else:
+        subgraph_info = Graph.LogicalSubgraphInfo(
+            ["202_grad"],
+            ["202"],
+        )
 
     subgraph = Graph.from_logical_subgraph(m._graph, subgraph_info)
     new_m = Model.copy_config(m, subgraph)
-    onnx.save(new_m.to_proto(), "pengwa_new_06_15.onnx")
+    onnx.save(new_m.to_proto(), f"pengwa_new_06_15_{use_yield}.onnx")
 
 
 if __name__ == "__main__":
