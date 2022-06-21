@@ -12,7 +12,13 @@ def main(args=None):
     args = parse_args(args)
     model_proto = onnx.load(args.src)
 
-    from onnxsharp import Model, Graph, Node
+    from onnxsharp import (
+        Model,
+        Graph,
+        Node,
+        LogicalSubgraphInfo,
+        create_graph_from_logical_subgraph,
+    )
 
     m = Model.from_proto(model_proto)
 
@@ -48,17 +54,19 @@ def main(args=None):
         print(inputs_of_classifier)
         m._graph.iterate_node(classifier_func)
 
-        subgraph_info = Graph.LogicalSubgraphInfo(
+        subgraph_info = LogicalSubgraphInfo(
+            m._graph,
             inputs_of_yield,
             list(inputs_of_classifier),
         )
     else:
-        subgraph_info = Graph.LogicalSubgraphInfo(
+        subgraph_info = LogicalSubgraphInfo(
+            m._graph,
             ["202_grad"],
             ["202"],
         )
 
-    subgraph = Graph.from_logical_subgraph(m._graph, subgraph_info)
+    subgraph = create_graph_from_logical_subgraph(subgraph_info)
     new_m = Model.copy_config(m, subgraph)
     onnx.save(new_m.to_proto(), f"pengwa_new_06_15_{use_yield}.onnx")
 

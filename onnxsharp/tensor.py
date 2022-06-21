@@ -23,6 +23,10 @@ class TensorShape(object):
                 d_proto = onnx.TensorShapeProto.Dimension()
                 d_proto.dim_param = str(d)
                 dim_protos.append(d_proto)
+            else:
+                d_proto = onnx.TensorShapeProto.Dimension()
+                d_proto.dim_value = d
+                dim_protos.append(d_proto)
 
         tensor_shape_proto.dim.extend(dim_protos)
         return tensor_shape_proto

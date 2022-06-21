@@ -273,7 +273,7 @@ class Node(object):
     def output_arg_names(self) -> list[str]:
         return [arg.name for arg in self._output_args]
 
-    def output_args(self, index):
+    def output_arg(self, index):
         enforce(
             index is not None and index >= 0 and index < len(self._output_args),
             "index out of range",

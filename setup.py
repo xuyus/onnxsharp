@@ -56,7 +56,7 @@ setup(
     author="xuyus",
     author_email="teams@xuyus.com",
     url="https://github.com/xuyus/onnx-sharp",
-    install_requires=["numpy>=1.14.1", "onnx>=1.4.1"],
+    install_requires=["numpy>=1.14.1", "onnx>=1.4.1", "pytest"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
