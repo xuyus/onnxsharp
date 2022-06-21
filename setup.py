@@ -21,7 +21,7 @@ except (OSError, subprocess.CalledProcessError):
     git_version = None
 
 with open(os.path.join(TOP_DIR, "VERSION")) as version_file:
-    VersionInfo = version_file.readline().strip() + "." + git_version[:8]
+    VersionInfo = version_file.readline().strip()
 
 
 class build_py(setuptools.command.build_py.build_py):
@@ -35,6 +35,8 @@ class build(distutils.command.build.build):
 
 
 class develop(setuptools.command.develop.develop):
+    VersionInfo = VersionInfo + "." + git_version[:8]
+
     def run(self):
         self.run_command("build")
         setuptools.command.develop.develop.run(self)
