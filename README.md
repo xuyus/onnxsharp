@@ -44,6 +44,56 @@ Clip SubGraph Around Output Edges:
     dest = f"clipped_subgraph.onnx"
     onnx.save(new_m.to_proto(), dest)
 
+Summarize Nodes with different level:
+
+    # Optionally load execution plan exported by ORT.
+    # This will show execution program counter for each operator when summarize patterns.
+    # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
+
+    # level = 0: single node as pattern.
+    # level = 1: node and its first level parents as a pattern.
+    # level = 2: node and its first level parents, and second level parents (e.g. parents of the first level parents) as a pattern.
+    m._graph.summarize_nodes(level, with_excution_plan=with_excution_plan)
+
+Outputs:
+
+> 0 levels of node summary:
+    [('Gemm()', 5),
+    ('ReduceSum()', 2),
+    ('Relu()', 1),
+    ('YieldOp()', 1),
+    ('ReluGrad()', 1)]
+
+> 1 levels of node summary:
+    [('Gemm()', 1),
+    ('Relu(Gemm())', 1),
+    ('Gemm(Relu())', 1),
+    ('YieldOp(Gemm())', 1),
+    ('Gemm(YieldOp())', 1),
+    ('ReluGrad(Gemm(),Relu())', 1),
+    ('Gemm(ReluGrad())', 1),
+    ('ReduceSum(ReluGrad())', 1),
+    ('Gemm(YieldOp(),Relu())', 1),
+    ('ReduceSum(YieldOp())', 1)]
+
+> 2 levels of node summary:
+    [('Gemm()', 1),
+    ('Relu(Gemm())', 1),
+    ('Gemm(Relu(Gemm()))', 1),
+    ('YieldOp(Gemm(Relu()))', 1),
+    ('Gemm(YieldOp(Gemm()))', 1),
+    ('ReluGrad(Gemm(YieldOp()),Relu(Gemm()))', 1),
+    ('Gemm(ReluGrad(Gemm(),Relu()))', 1),
+    ('ReduceSum(ReluGrad(Gemm(),Relu()))', 1),
+    ('Gemm(YieldOp(Gemm()),Relu(Gemm()))', 1),
+    ('ReduceSum(YieldOp(Gemm()))', 1)]
+
 ## Installation
 
-pip install -e .
+Dev Install
+
+    pip install -e .
+
+Install from PyPI
+
+    pip install --upgrade onnxsharp

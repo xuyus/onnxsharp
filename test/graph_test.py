@@ -1,4 +1,5 @@
 import onnx
+import pytest
 
 from onnxsharp import (
     Model,
@@ -60,3 +61,17 @@ def test_clip_subgraph_from_output_arg():
 
     dest = f"clipped_subgraph.onnx"
     onnx.save(new_m.to_proto(), dest)
+
+
+@pytest.mark.parametrize("level", [0, 1, 2])
+@pytest.mark.parametrize("with_excution_plan", [False, True])
+def test_node_print(level, with_excution_plan):
+    src = "./testdata/ort_sample_model.onnx"
+    model_proto = onnx.load(src)
+    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+
+    m = Model.from_proto(model_proto)
+    # Optionally load execution plan exported by ORT.
+    # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
+
+    m._graph.summarize_nodes(level, with_excution_plan=with_excution_plan)
