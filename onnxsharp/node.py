@@ -192,6 +192,9 @@ class NodeArg(object):
 class Node(object):
     def __init__(self) -> None:
         self._g = None
+
+        ## ONNX Proto
+
         # self._node_proto = None
 
         # string name = 3;
@@ -214,6 +217,10 @@ class Node(object):
 
         # string doc_string = 6;
         self._doc_string = None
+
+        ## Execution Plan
+
+        self._program_counter = None
 
     @classmethod
     def from_proto(self, graph, node_proto):

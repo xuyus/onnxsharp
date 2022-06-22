@@ -436,3 +436,44 @@ class Graph(object):
                 return False
 
         return True
+
+    def summarize_nodes(self, level=0, with_excution_plan=False):
+        import pprint
+
+        pp = pprint.PrettyPrinter(indent=4)
+
+        def _get_node_pattern(n: Node, cur_level):
+            optypestr_list = []
+            if cur_level < level:
+                for i in n.input_arg_names:
+                    if not self.is_activation(i):
+                        continue
+
+                    p_node, _ = self.get_node_with_output_arg_name(i)
+                    node_str = _get_node_pattern(p_node, cur_level + 1)
+                    optypestr_list.append(node_str)
+
+            types_str = ",".join(optypestr_list)
+            execution_str = (
+                "@" + str(n._program_counter)
+                if with_excution_plan is True and n._program_counter is not None
+                else ""
+            )
+            return f"{n.type}{execution_str}({types_str})"
+
+        op_type_str_summary: OrderedDict[str, int] = OrderedDict()
+        for name, node in self._node_name_mapping.items():
+            pattern_str = _get_node_pattern(node, 0)
+            if pattern_str not in op_type_str_summary:
+                op_type_str_summary[pattern_str] = 0
+
+            op_type_str_summary[pattern_str] += 1
+
+        sorted_tuples = sorted(
+            op_type_str_summary.items(), key=lambda item: item[1], reverse=True
+        )
+
+        print(f"## {level} levels of node summary:")
+        pp.pprint(sorted_tuples)
+
+        return

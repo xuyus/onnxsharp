@@ -2,6 +2,7 @@ from typing import OrderedDict
 from onnxsharp import Model, Graph, Node, ValueInfo, NodeArg
 from .basics import enforce
 import copy
+import re
 
 
 def topological_sort(graph, ops: list[Node]) -> list[Node]:
@@ -540,3 +541,36 @@ def clip_subgraph_around(g: Graph, output_arg_name):
                 )
 
     return new_g
+
+
+def fill_with_execution_plan(g: Graph, file_name):
+    # [6] Mul (Mul_17)
+    # Free ml-values: (550) onnx::Mul_564
+    # Free ml-values: (4971) onnx::Unsqueeze_8287, (4974) onnx::Unsqueeze_8290, (4978) per_input_length_token_715
+
+    # \S: non whiltespace character
+    execution_regex = "\[([0-9]+)\] ([\S]+) \(([\S]+)\)"
+    free_regex = "Free ml-values: \(([\S]+)\) ([\S]+)"
+
+    with open(file_name) as f:
+        for line in f:
+            match = re.match(execution_regex, line)
+            if match:
+                program_counter = int(match.group(1))
+                node_type = str(match.group(2))
+                node_name = str(match.group(3))
+                node = g.get_node_with_name(node_name)
+
+                enforce(node_type == node.type, f"Op type should match for node {node}")
+                node._program_counter = program_counter
+
+                continue
+            else:
+                match = re.match(free_regex, line)
+                if match:
+                    ortvalue_idx = int(match.group(1))
+                    output_arg_name = str(match.group(2))
+                    # So far, looks this is not useful
+                    continue
+                else:
+                    print("warning: the line is not parsed correctly ", line)
