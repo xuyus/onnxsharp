@@ -1,11 +1,11 @@
-from typing import OrderedDict
+from typing import List, OrderedDict
 from onnxsharp import Model, Graph, Node, ValueInfo, NodeArg
 from .basics import enforce
 import copy
 import re
 
 
-def topological_sort(graph, ops: list[Node]) -> list[Node]:
+def topological_sort(graph, ops: List[Node]) -> List[Node]:
     """Topological sort of graph."""
     # sort by name, the result will be reversed alphabeta
     ops.sort(key=lambda op: op.name)
