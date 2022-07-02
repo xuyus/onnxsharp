@@ -75,3 +75,18 @@ def test_node_print(level, with_excution_plan):
     # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
 
     m._graph.summarize_nodes(level, with_excution_plan=with_excution_plan)
+
+
+@pytest.mark.parametrize(
+    "model_path",
+    [
+        "./testdata/ort_sample_model.onnx",
+    ],
+)
+def test_tensor_print(model_path):
+    src = model_path
+    model_proto = onnx.load(src)
+    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+
+    m = Model.from_proto(model_proto)
+    m._graph.summarize_tensors()

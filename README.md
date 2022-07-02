@@ -88,6 +88,14 @@ Outputs:
     ('Gemm(YieldOp(Gemm()),Relu(Gemm()))', 1),
     ('ReduceSum(YieldOp(Gemm()))', 1)]
 
+
+Summarize Tensors with FP16 range check:
+
+    # Both initializers (of type TensorProto) and Constant node's value attribute (of type TensorProto) will be checked.
+    # Can be used as a data range safety check, especially some of those tensors will be represented as FP16
+    # in training.
+    m._graph.summarize_tensors()
+
 ## Installation
 
 Dev Install

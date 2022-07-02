@@ -213,14 +213,14 @@ class Node(object):
         self._domain = None
 
         # repeated AttributeProto attribute = 5;
-        self._attr = OrderedDict()
+        self._attr: OrderedDict[str, Attribute] = OrderedDict()
 
         # string doc_string = 6;
         self._doc_string = None
 
-        ## Execution Plan
+        ## ONNXRuntime specific.
 
-        self._program_counter = None
+        self._ort_program_counter = None
 
     @classmethod
     def from_proto(self, graph, node_proto):

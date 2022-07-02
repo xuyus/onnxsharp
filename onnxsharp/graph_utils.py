@@ -562,7 +562,7 @@ def fill_with_execution_plan(g: Graph, file_name):
                 node = g.get_node_with_name(node_name)
 
                 enforce(node_type == node.type, f"Op type should match for node {node}")
-                node._program_counter = program_counter
+                node._ort_program_counter = program_counter
 
                 continue
             else:

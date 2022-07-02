@@ -3,6 +3,7 @@ from black import validate_cell
 import onnx
 from onnx import helper, defs, numpy_helper, checker
 import copy
+import numpy as np
 
 from .node import enforce, Node, NodeArg, ValueInfo
 from .tensor import TensorType, Tensor, TensorShape
@@ -33,7 +34,7 @@ class Graph(object):
 
         # repeated TensorProto initializer = 5;
         for initializer in graph_proto.initializer:
-            g._initializer_map[initializer.name] = Tensor(initializer)
+            g._initializer_map[initializer.name] = Tensor.from_proto(initializer)
 
         # string doc_string = 10;
         g._doc_string = graph_proto.doc_string
@@ -437,6 +438,79 @@ class Graph(object):
 
         return True
 
+    def summarize_tensors(self):
+        import pprint
+
+        # https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+
+        smallest_subnormal_number = 5.96e-8
+        smallest_normal_number = 6.10e-5
+        largest_norm_number = 65504
+
+        pp = pprint.PrettyPrinter(indent=4)
+        nan_tensor_names: OrderedDict[str, Tensor] = OrderedDict()
+        inf_tensor_names: OrderedDict[str, Tensor] = OrderedDict()
+
+        def _summarize_tensors(tensors_map):
+            for initializer_name, tensor in tensors_map:
+                if np.isnan(tensor._value).any():
+                    if initializer_name not in nan_tensor_names:
+                        nan_tensor_names[initializer_name] = tensor
+                    continue
+
+                if np.isinf(tensor._value).any():
+                    if initializer_name not in nan_tensor_names:
+                        inf_tensor_names[initializer_name] = tensor
+                    continue
+
+                subnormal_candidiates = np.logical_and(
+                    np.abs(tensor._value) > 0,
+                    np.abs(tensor._value) <= smallest_subnormal_number,
+                )
+                if subnormal_candidiates.any():
+                    to_print = tensor._value
+                    if tensor._value.ndim > 0:
+                        indices = np.where(subnormal_candidiates)
+                        to_print = tensor._value[indices]
+
+                    print(
+                        f"Warning: find a tensor {initializer_name} having subnormal number {to_print} around fp16 lower boundary."
+                    )
+
+                around_fp16_boundary = np.abs(tensor._value) >= largest_norm_number
+                if around_fp16_boundary.any():
+                    to_print = tensor._value
+                    if tensor._value.ndim > 0:
+                        indices = np.where(around_fp16_boundary)
+                        to_print = tensor._value[indices]
+
+                    print(
+                        f"Warning: find a tensor {initializer_name} having number {to_print} around fp16 upper boundary."
+                    )
+
+        _summarize_tensors(self._initializer_map.items())
+
+        constant_tensors: OrderedDict[str, Tensor] = OrderedDict()
+        for _, n in self._node_name_mapping.items():
+            if n.type == "Constant":
+                constant_tensors[n.output_arg_names[0]] = Tensor.from_proto(
+                    n._attr["value"]._value
+                )
+
+        _summarize_tensors(constant_tensors.items())
+
+        if len(nan_tensor_names) == 0 and len(inf_tensor_names) == 0:
+            print("NaN or inf not found for all initializers.")
+        else:
+            print(
+                f"Found {len(nan_tensor_names)} initializers contains Nan. Be cautious used for training."
+            )
+
+            print(
+                f"Found {len(inf_tensor_names)} initializers contains Inf. Be cautious used for training."
+            )
+        # pp.pprint(self._initializer_map.items())
+
     def summarize_nodes(self, level=0, with_excution_plan=False):
         import pprint
 
@@ -455,11 +529,16 @@ class Graph(object):
 
             types_str = ",".join(optypestr_list)
             execution_str = (
-                "@" + str(n._program_counter)
-                if with_excution_plan is True and n._program_counter is not None
+                "@" + str(n._ort_program_counter)
+                if with_excution_plan is True and n._ort_program_counter is not None
                 else ""
             )
-            return f"{n.type}{execution_str}({types_str})"
+            bw_str = (
+                "_B"
+                if n._doc_string is not None and "Backward pass" in n._doc_string
+                else ""
+            )
+            return f"{n.type}{bw_str}{execution_str}({types_str})"
 
         op_type_str_summary: OrderedDict[str, int] = OrderedDict()
         for name, node in self._node_name_mapping.items():
