@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import List, Tuple
 from black import validate_cell
 import onnx
 from onnx import helper, defs, numpy_helper, checker
@@ -98,7 +99,7 @@ class Graph(object):
         )
         return self._initializer_map[output_arg_name]
 
-    def get_node_with_output_arg_name(self, output_arg_name: str) -> tuple[Node, int]:
+    def get_node_with_output_arg_name(self, output_arg_name: str) -> Tuple[Node, int]:
         enforce(output_arg_name is not None, "output_arg_name should not be None")
         enforce(
             output_arg_name in self._output_arg_name_to_node_mapping,
@@ -308,8 +309,8 @@ class Graph(object):
         self,
         type: str,
         name: str,
-        input_arg_names: list[str],
-        output_arg_names: list[str],
+        input_arg_names: List[str],
+        output_arg_names: List[str],
         domain: str,
         doc_string: str,
         **kwargs,
