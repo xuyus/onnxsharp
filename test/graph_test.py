@@ -90,3 +90,18 @@ def test_tensor_print(model_path):
 
     m = Model.from_proto(model_proto)
     m._graph.summarize_tensors()
+
+    level = 0
+    m._graph.summarize_nodes(level)
+
+
+def test_node_include_shape_print(level=0):
+    src = "./testdata/ort_sample_model.onnx"
+    model_proto = onnx.load(src)
+    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+
+    m = Model.from_proto(model_proto)
+    # Optionally load execution plan exported by ORT.
+    # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
+
+    m._graph.summarize_nodes(level, include_shape=True)

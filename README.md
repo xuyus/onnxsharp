@@ -88,6 +88,17 @@ Outputs:
     ('Gemm(YieldOp(Gemm()),Relu(Gemm()))', 1),
     ('ReduceSum(YieldOp(Gemm()))', 1)]
 
+> graph_test.py::test_node_include_shape_print ## 0 levels of node summary:
+    [('Gemm()<-[(input1_dim0,input1_dim1),(500,784),(500)]', 1),
+    ('Relu()<-[(input1_dim0,500)]', 1),
+    ('Gemm()<-[(input1_dim0,500),(10,500),(10)]', 1),
+    ('YieldOp()<-[(input1_dim0,10)]', 1),
+    ('Gemm_B()<-[None,(10,500)]', 1),
+    ('ReluGrad_B()<-[(input1_dim0,500),(input1_dim0,500)]', 1),
+    ('Gemm_B()<-[(input1_dim0,500),(input1_dim0,input1_dim1)]', 1),
+    ('ReduceSum_B()<-[(input1_dim0,500),None]', 1),
+    ('Gemm_B()<-[None,(input1_dim0,500)]', 1),
+    ('ReduceSum_B()<-[None,None]', 1)]
 
 Summarize Tensors with FP16 range check:
 

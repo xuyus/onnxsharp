@@ -506,6 +506,8 @@ def clip_subgraph_around(g: Graph, output_arg_name):
     n_consumers = g.get_consumer_nodes(output_arg_name)
     g_nodes.extend(n_consumers)
 
+    # remove duplications
+    g_nodes = list(set(g_nodes))
     updated_node_list = topological_sort(g, g_nodes)
 
     print("updated_node_list: ", updated_node_list)
