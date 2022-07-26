@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import List
 from black import validate_cell
 import onnx
 from onnx import helper, defs, numpy_helper, checker
@@ -283,7 +284,7 @@ class Node(object):
         return self._type
 
     @property
-    def output_arg_names(self) -> list[str]:
+    def output_arg_names(self) -> List[str]:
         return [arg.name for arg in self._output_args]
 
     def output_arg(self, index):
@@ -294,7 +295,7 @@ class Node(object):
         return self._output_args[index]
 
     @property
-    def input_arg_names(self) -> list[str]:
+    def input_arg_names(self) -> List[str]:
         return [arg.name for arg in self._input_args]
 
     def input_arg(self, index):
