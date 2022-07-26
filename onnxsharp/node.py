@@ -176,6 +176,12 @@ class NodeArg(object):
     def name(self):
         return self._name
 
+    @property
+    def shape(self):
+        if not hasattr(self._value_info, "_type") or self._value_info._type is None:
+            return None
+        return self._value_info._type._shape._dim
+
     def update(self, value_info):
         self._value_info = value_info
 

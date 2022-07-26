@@ -511,7 +511,7 @@ class Graph(object):
             )
         # pp.pprint(self._initializer_map.items())
 
-    def summarize_nodes(self, level=0, with_excution_plan=False):
+    def summarize_nodes(self, level=0, with_excution_plan=False, include_shape=False):
         import pprint
 
         pp = pprint.PrettyPrinter(indent=4)
@@ -538,7 +538,19 @@ class Graph(object):
                 if n._doc_string is not None and "Backward pass" in n._doc_string
                 else ""
             )
-            return f"{n.type}{bw_str}{execution_str}({types_str})"
+
+            shape_str = ""
+            if include_shape is True:
+                all_input_shape_str = ",".join(
+                    [
+                        "(" + ",".join([str(s) for s in node_input_arg.shape]) + ")"
+                        if node_input_arg.shape
+                        else "None"
+                        for node_input_arg in n._input_args
+                    ]
+                )
+                shape_str = f"<-[{all_input_shape_str}]"
+            return f"{n.type}{bw_str}{execution_str}({types_str}){shape_str}"
 
         op_type_str_summary: OrderedDict[str, int] = OrderedDict()
         for name, node in self._node_name_mapping.items():
