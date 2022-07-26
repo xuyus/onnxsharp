@@ -439,6 +439,12 @@ class Graph(object):
 
         return True
 
+    def summarize_inputs(self):
+        import pprint
+
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(self._input_map.items())
+
     def summarize_tensors(self):
         import pprint
 
