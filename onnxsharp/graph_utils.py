@@ -497,8 +497,8 @@ def clip_subgraph_around(g: Graph, output_arg_name):
     g_nodes = []
     n, index = g.get_node_with_output_arg_name(output_arg_name)
     print(f"{n.output_arg(index)}")
-    
-    input_level = 2
+
+    input_level = 6
     cur_level_nodes = [n]
     for i in range(input_level):
         next_level_nodes = []
@@ -508,13 +508,13 @@ def clip_subgraph_around(g: Graph, output_arg_name):
                     n_, index_ = g.get_node_with_output_arg_name(input_arg_name)
                     g_nodes.append(n_)
                     next_level_nodes.append(n_)
-                    
+
         cur_level_nodes = next_level_nodes
 
     g_nodes.append(n)
-    
+
     n_consumers = g.get_consumer_nodes(output_arg_name)
-    output_level = 2
+    output_level = 6
     cur_level_nodes = [n]
     for i in range(output_level):
         next_level_nodes = []
@@ -524,7 +524,7 @@ def clip_subgraph_around(g: Graph, output_arg_name):
                     n_consumers = g.get_consumer_nodes(output_arg_name)
                     next_level_nodes.extend(n_consumers)
                     g_nodes.extend(n_consumers)
-                    
+
         cur_level_nodes = next_level_nodes
 
     # remove duplications
