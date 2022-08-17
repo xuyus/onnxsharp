@@ -24,9 +24,6 @@ def _check_model():
 def select_model(src):
     from onnxsharp import (
         Model,
-        Node,
-        LogicalSubgraphInfo,
-        create_graph_from_logical_subgraph,
     )
 
     global _M
@@ -38,16 +35,13 @@ def select_model(src):
 def sum_nodes(level=0, include_shape=False, op_type=None):
     _check_model()
     global _M
-    _M._graph.summarize_nodes(0, include_shape=include_shape, op_type=op_type)
+    _M._graph.summarize_nodes(level, include_shape=include_shape, op_type=op_type)
 
 
 def list_nodes(op_type):
     _check_model()
     from onnxsharp import (
-        Model,
         Node,
-        LogicalSubgraphInfo,
-        create_graph_from_logical_subgraph,
     )
 
     global _M
@@ -61,7 +55,7 @@ def list_nodes(op_type):
 
 def clip_graph(out_arg_name):
     _check_model()
-    from onnxsharp import Model, Graph, Node, clip_subgraph_around
+    from onnxsharp import Model, clip_subgraph_around
 
     global _M
     n = out_arg_name

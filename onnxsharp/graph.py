@@ -443,7 +443,7 @@ class Graph(object):
         import pprint
 
         pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(self._input_map.items())
+        pp.pprint(self._input_map)
 
     def summarize_tensors(self):
         import pprint
@@ -563,9 +563,10 @@ class Graph(object):
 
         op_type_str_summary: OrderedDict[str, int] = OrderedDict()
         for name, node in self._node_name_mapping.items():
-            pattern_str = _get_node_pattern(node, 0)
-            if op_type is not None and op_type not in pattern_str:
+            if op_type is not None and op_type != node.type:
                 continue
+
+            pattern_str = _get_node_pattern(node, 0)
 
             if pattern_str not in op_type_str_summary:
                 op_type_str_summary[pattern_str] = 0

@@ -5,7 +5,7 @@ import onnx
 from onnx import helper, defs, numpy_helper, checker
 import copy
 
-from .tensor import TensorType, enforce
+from .tensor import TensorType, enforce, Tensor
 
 
 class ValueInfo(object):
@@ -102,7 +102,8 @@ class Attribute(AttributeType):
         elif a._type == AttributeType.STRING:
             a._value = attribute_proto.s
         elif a._type == AttributeType.TENSOR:
-            a._value = attribute_proto.t
+            tensor_proto_val = attribute_proto.t
+            a._value = Tensor.from_proto(tensor_proto_val)
         elif a._type == AttributeType.GRAPH:
             a._value = attribute_proto.g
         elif a._type == AttributeType.SPARSE_TENSOR:
@@ -130,16 +131,21 @@ class Attribute(AttributeType):
         attr_proto = onnx.AttributeProto()
         if self._type == AttributeType.FLOAT:
             attr_proto.f = self._value
+            attr_proto.type = onnx.AttributeProto.FLOAT
         elif self._type == AttributeType.INT:
             attr_proto.i = self._value
+            attr_proto.type = onnx.AttributeProto.INT
         elif self._type == AttributeType.STRING:
             attr_proto.s = self._value
         elif self._type == AttributeType.TENSOR:
-            attr_proto.t = self._value.to_proto()
+            attr_proto.t.CopyFrom(self._value.to_proto())
+            attr_proto.type = onnx.AttributeProto.TENSOR
         elif self._type == AttributeType.GRAPH:
-            attr_proto.g = self._value.to_proto()
+            attr_proto.g.CopyFrom(self._value.to_proto())
+            attr_proto.type = onnx.AttributeProto.GRAPH
         elif self._type == AttributeType.SPARSE_TENSOR:
-            attr_proto.sparse_tensor = self._value.to_proto()
+            attr_proto.sparse_tensor.CopyFrom(self._value.to_proto())
+            attr_proto.type = onnx.AttributeProto.SPARSE_TENSOR
         elif self._type == AttributeType.TYPE_PROTO:
             attr_proto.tp = self._value.to_proto()
         elif self._type == AttributeType.FLOATS:
