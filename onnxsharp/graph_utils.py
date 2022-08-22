@@ -492,6 +492,59 @@ def safe_remove_subgraph(g, subgraph_info: LogicalSubgraphInfo):
     print("safe_remove_subgraph - successfully remove the subgraph.")
 
 
+def _create_graph_from_nodes(g: Graph, g_nodes: List[Node]):
+    # remove duplications
+    g_nodes = list(set(g_nodes))
+    updated_node_list = topological_sort(g, g_nodes)
+
+    print("updated_node_list: ", updated_node_list)
+
+    # so far, g_nodes contains 3 level of nodes.
+
+    # Collect all graph-level inputs and initializers.
+    new_g = Graph()
+    new_g._name = g._name
+    new_g._doc_string = g._doc_string
+
+    activation_outs = []
+    for n in updated_node_list:
+        for index, input_arg_name in enumerate(n.input_arg_names):
+            if g.is_input(input_arg_name) and not new_g.is_input(input_arg_name):
+                new_g.add_input(
+                    input_arg_name, copy.deepcopy(n.input_arg(index)._value_info)
+                )
+
+            if g.is_initializer(input_arg_name) and not new_g.is_initializer(
+                input_arg_name
+            ):
+                new_g.add_initializer(
+                    input_arg_name,
+                    copy.deepcopy(g._initializer_map[input_arg_name]),
+                )
+
+        new_g.add_node_copy_from(n, make_non_exist_input_arg_as_graph_input=True)
+
+        for index, output_arg_name in enumerate(n.output_arg_names):
+            if g.is_output(output_arg_name) and not new_g.is_output(output_arg_name):
+                new_g.add_output(
+                    output_arg_name, copy.deepcopy(n.output_arg(index)._value_info)
+                )
+
+            if g.is_activation(output_arg_name):
+                activation_outs.append([output_arg_name, n.output_arg(index)])
+
+    for output_arg_name, output_arg in activation_outs:
+        if new_g.is_output(output_arg_name):
+            continue
+
+        new_g.add_output(
+            f"{output_arg_name}",
+            copy.deepcopy(output_arg._value_info),
+        )
+
+    return new_g
+
+
 def clip_subgraph_around(g: Graph, output_arg_name):
     print(f"clip_subgraph_around>> output_arg_name: {output_arg_name}")
     g_nodes = []
@@ -527,43 +580,7 @@ def clip_subgraph_around(g: Graph, output_arg_name):
 
         cur_level_nodes = next_level_nodes
 
-    # remove duplications
-    g_nodes = list(set(g_nodes))
-    updated_node_list = topological_sort(g, g_nodes)
-
-    print("updated_node_list: ", updated_node_list)
-
-    # so far, g_nodes contains 3 level of nodes.
-
-    # Collect all graph-level inputs and initializers.
-    new_g = Graph()
-    new_g._name = g._name
-    new_g._doc_string = g._doc_string
-
-    for n in updated_node_list:
-        for index, input_arg_name in enumerate(n.input_arg_names):
-            if g.is_input(input_arg_name) and not new_g.is_input(input_arg_name):
-                new_g.add_input(
-                    input_arg_name, copy.deepcopy(n.input_arg(index)._value_info)
-                )
-
-            if g.is_initializer(input_arg_name) and not new_g.is_initializer(
-                input_arg_name
-            ):
-                new_g.add_initializer(
-                    input_arg_name,
-                    copy.deepcopy(g._initializer_map[input_arg_name]),
-                )
-
-        new_g.add_node_copy_from(n, make_non_exist_input_arg_as_graph_input=True)
-
-        for index, output_arg_name in enumerate(n.output_arg_names):
-            if g.is_output(output_arg_name) and not new_g.is_output(output_arg_name):
-                new_g.add_output(
-                    output_arg_name, copy.deepcopy(n.output_arg(index)._value_info)
-                )
-
-    return new_g
+    return _create_graph_from_nodes(g, g_nodes)
 
 
 def fill_with_execution_plan(g: Graph, file_name):
@@ -597,3 +614,128 @@ def fill_with_execution_plan(g: Graph, file_name):
                     continue
                 else:
                     print("warning: the line is not parsed correctly ", line)
+
+
+tag = 0
+has_update = False
+
+
+def elementwise_subgraph(g: Graph):
+    global tag
+    global has_update
+    elementwise_operators = {
+        "Abs": [0],
+        "Add": [0],
+        "Cast": [0],
+        "Clip": [0],
+        "Div": [0],
+        "Equal": [0, 1],
+        "Exp": [0],
+        "Mul": [0, 1],
+        "Sub": [0, 1],
+        "Pow": [0],
+        "Sqrt": [0],
+        "Neg": [0],
+        "Not": [0],
+        "Log": [0],
+    }
+
+    node_name_to_tag = {}
+
+    def initialize_node_tag(node: Node):
+        global tag
+        node_name_to_tag[node.name] = tag
+        tag += 1
+
+    def update_flag(old_flag, new_flag):
+        has_update = False
+        for node_name in node_name_to_tag:
+            if node_name_to_tag[node_name] == old_flag:
+                node_name_to_tag[node_name] = new_flag
+                has_update = True
+        return has_update
+
+    g.iterate_node(initialize_node_tag)
+
+    has_update = True
+    while has_update:
+        has_update = False
+
+        def initialize_node_tag(node: Node):
+            global has_update
+            if node.type in elementwise_operators.keys():
+                extensible_input_idxs = elementwise_operators[node.type]
+
+                # update self's other parents use the same tag.
+                idx = 0
+                while idx < len(extensible_input_idxs):
+                    input_arg_name = node.input_arg_names[extensible_input_idxs[idx]]
+                    if g.is_activation(input_arg_name):
+                        p_node, _ = g.get_node_with_output_arg_name(
+                            node.input_arg_names[extensible_input_idxs[idx]]
+                        )
+                        if (
+                            p_node.type in elementwise_operators.keys()
+                            and node_name_to_tag[p_node.name]
+                            != node_name_to_tag[node.name]
+                        ):
+                            has_update = update_flag(
+                                node_name_to_tag[p_node.name],
+                                node_name_to_tag[node.name],
+                            )
+
+                    idx += 1
+
+        g.iterate_node(initialize_node_tag)
+
+    inversed_map = OrderedDict()
+    for name, tag in node_name_to_tag.items():
+        if tag not in inversed_map:
+            inversed_map[tag] = []
+
+        inversed_map[tag].append(g.get_node_with_name(name))
+        print(
+            f"append node name {name} into tag {tag}, count become: {len(inversed_map[tag])}"
+        )
+
+    g_to_return = OrderedDict()
+    for k, v in inversed_map.items():
+        if len(v) >= 3:
+            print(f"find candidate subgraph with tag: {k}, ndoe count: {len(v)}")
+            # subgraphs.append(_create_graph_from_nodes(g, v))
+
+            subgraph_unique_id = unique_id_str(g, v)
+            if subgraph_unique_id not in g_to_return:
+                g_to_return[subgraph_unique_id] = [
+                    _create_graph_from_nodes(g, v),
+                    len(v),
+                    1,
+                ]
+            else:
+                g_to_return[subgraph_unique_id][2] += 1
+
+    print(f"Find {len(g_to_return)} unique sub graphs.")
+    return g_to_return
+
+
+def unique_id_str(g: Graph, g_nodes: List[Node]):
+    g_nodes = list(set(g_nodes))
+    sorted_nodes = topological_sort(g, g_nodes)
+
+    unique_id_str = ""
+    for n in sorted_nodes:
+        input_shapes = []
+        for i in range(len(n.input_arg_names)):
+            input_shapes.append(str(n.input_arg(i).shape))
+
+        input_shapes_str = ",".join(input_shapes)
+
+        output_shapes = []
+        for i in range(len(n.output_arg_names)):
+            output_shapes.append(str(n.output_arg(i).shape))
+
+        output_shapes_str = ",".join(output_shapes)
+
+        unique_id_str += f"{len(n.input_arg_names)}.[{input_shapes_str}].{n.type}.{len(n.output_arg_names)}.[{output_shapes_str}]"
+
+    return unique_id_str

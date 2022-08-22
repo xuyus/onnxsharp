@@ -10,6 +10,7 @@ from .graph_utils import (
     create_graph_from_logical_subgraph,
     fill_with_execution_plan,
     bfs_from_output,
+    elementwise_subgraph,
 )
 
 

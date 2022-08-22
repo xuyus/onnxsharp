@@ -6,6 +6,7 @@ from onnxsharp import (
     Node,
     LogicalSubgraphInfo,
     create_graph_from_logical_subgraph,
+    elementwise_subgraph,
 )
 
 
@@ -115,3 +116,17 @@ def test_desc_graph_inputs():
     m = Model.from_proto(model_proto)
 
     m._graph.summarize_inputs()
+
+
+def test_cluster_elementwise_operations():
+    src = "./testdata/ort_sample_model.onnx"
+    model_proto = onnx.load(src)
+    m = Model.from_proto(model_proto)
+    rets = elementwise_subgraph(m._graph)
+    prefix = "ort_sample_"
+    idx = 0
+    for _, subgraph in rets.items():
+        dest = f"{prefix}.{subgraph[1]}nodes-{subgraph[2]}freq-{idx}.onnx"
+        new_m = Model.copy_config(m, subgraph[0])
+        onnx.save(new_m.to_proto(), dest)
+        idx += 1
