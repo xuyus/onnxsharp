@@ -399,8 +399,10 @@ class Graph(object):
         for name, node in self._node_name_mapping.items():
             node_protos.append(node.to_proto())
             for output_arg in node._output_args:
-                # todo: clean up this if
-                if output_arg._value_info is not None:
+                if (
+                    output_arg._value_info is not None
+                    and output_arg._value_info.has_type()
+                ):
                     value_info_protos.append(output_arg.to_proto())
         graph_proto.node.extend(node_protos)
 

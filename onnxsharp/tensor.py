@@ -68,7 +68,14 @@ class Tensor(object):
         self._dims = None
         self._data_type = None
         self._name = None
-        self._value = None
+
+        self._raw_value = None
+        self._float_data = None
+        self._int32_data = None
+        self._int64_data = None
+        self._uint64_data = None
+        self._double_data = None
+        self._string_data = None
 
     @classmethod
     def from_proto(self, tensor_proto):
@@ -76,6 +83,7 @@ class Tensor(object):
 
         ## The shape of the tensor.
         # repeated int64 dims = 1;
+        # if tensor_proto.HasField("dim"):
         t._dims = [int(dim_value) for dim_value in tensor_proto.dims]
 
         # optional int32 data_type = 2;
@@ -107,7 +115,7 @@ class Tensor(object):
         # repeated int64 int64_data = 7 [packed = true];
 
         # optional string name = 8; // namespace Value
-        t._name = tensor_proto.name
+        t._name = tensor_proto.name if tensor_proto.HasField("name") else None
 
         # optional string doc_string = 12;
 
@@ -121,12 +129,129 @@ class Tensor(object):
 
         # repeated uint64 uint64_data = 11 [packed = true];
 
-        t._value = numpy_helper.to_array(tensor_proto)
+        if tensor_proto.HasField("raw_data"):
+            # print("raw_data found for tensorproto.name", tensor_proto.name)
+            t._raw_value = numpy_helper.to_array(tensor_proto)
+            return t
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.FLOAT,
+            onnx_pb.TensorProto.COMPLEX64,
+        ]:
+            t._float_data = [f for f in tensor_proto.float_data]
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.FLOAT16,
+            onnx_pb.TensorProto.BFLOAT16,
+            onnx_pb.TensorProto.BOOL,
+            onnx_pb.TensorProto.INT8,
+            onnx_pb.TensorProto.INT16,
+            onnx_pb.TensorProto.INT32,
+            onnx_pb.TensorProto.UINT8,
+            onnx_pb.TensorProto.UINT16,
+        ]:
+            t._int32_data = [i for i in tensor_proto.int32_data]
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.INT64,
+        ]:
+            t._int64_data = [i for i in tensor_proto.int64_data]
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.UINT32,
+            onnx_pb.TensorProto.UINT64,
+        ]:
+            t._uint64_data = [i for i in tensor_proto.uint64_data]
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.DOUBLE,
+            onnx_pb.TensorProto.COMPLEX128,
+        ]:
+            t._double_data = [i for i in tensor_proto.double_data]
+
+        if tensor_proto.data_type in [
+            onnx_pb.TensorProto.STRING,
+        ]:
+            t._string_data = [i for i in tensor_proto.string_data]
 
         return t
 
+    @property
+    def value(self):
+
+        if self._float_data:
+            return self._float_data
+
+        if self._int32_data:
+            return self._int32_data
+
+        if self._int64_data:
+            return self._int64_data
+
+        if self._uint64_data:
+            return self._uint64_data
+
+        if self._double_data:
+            return self._double_data
+
+        if self._string_data:
+            return self._string_data
+
+        if self._raw_value:
+            return self._raw_value
+
     def to_proto(self):
-        return numpy_helper.from_array(self._value, name=self._name)
+        if self._raw_value is not None:
+            return numpy_helper.from_array(self._raw_value, name=self._name)
+
+        tensor_proto = onnx.TensorProto()
+        if self._data_type in [
+            onnx_pb.TensorProto.FLOAT,
+            onnx_pb.TensorProto.COMPLEX64,
+        ]:
+            tensor_proto.float_data.extend(self._float_data)
+
+        if self._data_type in [
+            onnx_pb.TensorProto.FLOAT16,
+            onnx_pb.TensorProto.BFLOAT16,
+            onnx_pb.TensorProto.BOOL,
+            onnx_pb.TensorProto.INT8,
+            onnx_pb.TensorProto.INT16,
+            onnx_pb.TensorProto.INT32,
+            onnx_pb.TensorProto.UINT8,
+            onnx_pb.TensorProto.UINT16,
+        ]:
+            tensor_proto.int32_data.extend(self._int32_data)
+
+        if self._data_type in [
+            onnx_pb.TensorProto.INT64,
+        ]:
+            tensor_proto.int64_data.extend(self._int64_data)
+
+        if self._data_type in [
+            onnx_pb.TensorProto.UINT32,
+            onnx_pb.TensorProto.UINT64,
+        ]:
+            tensor_proto.uint64_data.extend(self._uint64_data)
+
+        if self._data_type in [
+            onnx_pb.TensorProto.DOUBLE,
+            onnx_pb.TensorProto.COMPLEX128,
+        ]:
+            tensor_proto.double_data.extend(self._double_data)
+
+        if self._data_type in [
+            onnx_pb.TensorProto.STRING,
+        ]:
+            tensor_proto.string_data.extend(self._string_data)
+
+        tensor_proto.dims.extend(self._dims)
+        tensor_proto.data_type = self._data_type
+
+        if self._name:
+            tensor_proto.name = self._name
+
+        return tensor_proto
 
     def __str__(self):
         return f"Tensor: name - {self._name}, type - {self._data_type}, dims - {self._dims}"

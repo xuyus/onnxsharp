@@ -28,13 +28,17 @@ class ValueInfo(object):
             raise NotImplementedError("unsupported type")
 
         # string doc_string = 3;
-        v._doc_string = value_info_proto.doc_string
+        if value_info_proto.HasField("doc_string"):
+            v._doc_string = value_info_proto.doc_string
 
         return v
 
     @property
     def name(self):
         return self._name
+
+    def has_type(self):
+        return self._type is not None
 
     def set_name(self, new_name):
         self._name = new_name
@@ -128,40 +132,11 @@ class Attribute(AttributeType):
         return a
 
     def to_proto(self):
-        attr_proto = onnx.AttributeProto()
-        if self._type == AttributeType.FLOAT:
-            attr_proto.f = self._value
-            attr_proto.type = onnx.AttributeProto.FLOAT
-        elif self._type == AttributeType.INT:
-            attr_proto.i = self._value
-            attr_proto.type = onnx.AttributeProto.INT
-        elif self._type == AttributeType.STRING:
-            attr_proto.s = self._value
-        elif self._type == AttributeType.TENSOR:
-            attr_proto.t.CopyFrom(self._value.to_proto())
-            attr_proto.type = onnx.AttributeProto.TENSOR
-        elif self._type == AttributeType.GRAPH:
-            attr_proto.g.CopyFrom(self._value.to_proto())
-            attr_proto.type = onnx.AttributeProto.GRAPH
-        elif self._type == AttributeType.SPARSE_TENSOR:
-            attr_proto.sparse_tensor.CopyFrom(self._value.to_proto())
-            attr_proto.type = onnx.AttributeProto.SPARSE_TENSOR
-        elif self._type == AttributeType.TYPE_PROTO:
-            attr_proto.tp = self._value.to_proto()
-        elif self._type == AttributeType.FLOATS:
-            attr_proto.floats.extend(v for v in self._value)
-        elif self._type == AttributeType.INTS:
-            attr_proto.ints.extend(v for v in self._value)
-        elif self._type == AttributeType.STRINGS:
-            attr_proto.strings.extend(v for v in self._value)
-        elif self._type == AttributeType.TENSORS:
-            attr_proto.tensors.extend(v.to_proto() for v in self._value)
-        elif self._type == AttributeType.GRAPHS:
-            attr_proto.graphs.extend(v.to_proto() for v in self._value)
-        elif self._type == AttributeType.SPARSE_TENSORS:
-            attr_proto.sparse_tensors.extend(v.to_proto() for v in self._value)
-        elif self._type == AttributeType.TYPE_PROTO:
-            attr_proto.type_protos.extend(v.to_proto() for v in self._value)
+        value = self._value
+        if self._type == AttributeType.TENSOR:
+            value = self._value.to_proto()
+
+        return helper.make_attribute(self._name, value)
 
 
 class NodeArg(object):
@@ -312,11 +287,6 @@ class Node(object):
         return self._input_args[index]
 
     def to_proto(self):
-        attribute_protos = {
-            attr_name: a.to_proto()
-            for attr_name, a in self._attr.items()
-            if attr_name != "name"
-        }
         node_proto = helper.make_node(
             self._type,
             self.input_arg_names,
@@ -324,7 +294,9 @@ class Node(object):
             name=self._name,
             doc_string=self._doc_string,
             domain=self._domain,
-            **attribute_protos,
+        )
+        node_proto.attribute.extend(
+            a.to_proto() for attr_name, a in self._attr.items() if attr_name != "name"
         )
         return node_proto
 

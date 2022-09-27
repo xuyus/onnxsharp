@@ -625,7 +625,10 @@ def elementwise_subgraph(g: Graph):
     global has_update
     elementwise_operators = {
         "Abs": [0],
+        "Acos": [0],
+        "Acosh": [0],
         "Add": [0],
+        "And": [0, 1],
         "Cast": [0],
         "Clip": [0],
         "Div": [0],
@@ -638,6 +641,22 @@ def elementwise_subgraph(g: Graph):
         "Neg": [0],
         "Not": [0],
         "Log": [0],
+        "Where": [0, 1, 2],
+        "Squeeze": [0],
+        "Unsqueeze": [0],
+        "Gelu": [0],
+        "BiasGelu": [0, 1],
+        "GeluGrad": [0],
+        "MemcpyFromHost": [0],
+        "MemcpyToHost": [0],
+        "Scale": [0, 1],
+        "Erf": [0],
+        "Sigmoid": [0],
+        "SigmoidGrad": [0],
+        "Max": [0, 1],
+        "Min": [0, 1],
+        "Less": [0, 1],
+        "Greater": [0, 1],
     }
 
     node_name_to_tag = {}
@@ -700,8 +719,8 @@ def elementwise_subgraph(g: Graph):
 
     g_to_return = OrderedDict()
     for k, v in inversed_map.items():
-        if len(v) >= 3:
-            print(f"find candidate subgraph with tag: {k}, ndoe count: {len(v)}")
+        if len(v) >= 2:
+            print(f"find candidate subgraph with tag: {k}, node count: {len(v)}")
             # subgraphs.append(_create_graph_from_nodes(g, v))
 
             subgraph_unique_id = unique_id_str(g, v)
