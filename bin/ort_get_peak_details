@@ -1,0 +1,10 @@
+#!/bin/bash
+
+file=$1
+step=`printf "%'d" $2`
+execution_step=`printf "%'d" $3`
+
+echo $step $execution_step
+
+grep '"ph":"X","pid":'${step}',' $1 | grep -v '"name":"Summary"' | grep '"tid":'${execution_step}',' | sort -V > $file_step_${step}_execution_step_${execution_step}.log
+

@@ -59,6 +59,12 @@ setup(
     author_email="teams@xuyus.com",
     url="https://github.com/xuyus/onnx-sharp",
     install_requires=["numpy>=1.14.1", "onnx>=1.4.1", "pytest", "black"],
+    scripts=[
+        "bin/ort_get_peak_details",
+        "bin/ort_get_peak_op_summary",
+        "bin/ort_get_peak_summary",
+        "bin/ort_parse_peak_summary",
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
