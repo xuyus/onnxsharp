@@ -6,5 +6,9 @@ execution_step=`printf "%'d" $3`
 
 echo $step $execution_step
 
-grep '"ph":"X","pid":'${step}',' $1 | grep -v '"name":"Summary"' | grep '"tid":'${execution_step}',' | sort -V > $file_step_${step}_execution_step_${execution_step}.log
+
+target_file=$file_step_${step}_execution_step_${execution_step}.log
+grep '"ph":"X","pid":'${step}',' $1 | grep -v '"name":"Summary"' | grep '"tid":'${execution_step}',' | sort -V > $target_file
+
+echo "use the following command to get op details at peak memory usage: ort_get_peak_op_summary --path $target_file --mpath execution_model.onnx"
 
