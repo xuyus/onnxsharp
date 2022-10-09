@@ -136,6 +136,8 @@ def main():
                 + "%"
             )
 
+            stats[4] = ",".join(stats[4])
+
     pp.pprint(op_type_to_shapes)
 
 
