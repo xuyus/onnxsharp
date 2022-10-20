@@ -623,41 +623,45 @@ has_update = False
 def elementwise_subgraph(g: Graph):
     global tag
     global has_update
-    elementwise_operators = {
-        "Abs": [0],
-        "Acos": [0],
-        "Acosh": [0],
-        "Add": [0],
-        "And": [0, 1],
-        "Cast": [0],
-        "Clip": [0],
-        "Div": [0],
-        "Equal": [0, 1],
-        "Exp": [0],
-        "Mul": [0, 1],
-        "Sub": [0, 1],
-        "Pow": [0],
-        "Sqrt": [0],
-        "Neg": [0],
-        "Not": [0],
-        "Log": [0],
-        "Where": [0, 1, 2],
-        "Squeeze": [0],
-        "Unsqueeze": [0],
-        "Gelu": [0],
-        "BiasGelu": [0, 1],
-        "GeluGrad": [0],
-        "MemcpyFromHost": [0],
-        "MemcpyToHost": [0],
-        "Scale": [0, 1],
-        "Erf": [0],
-        "Sigmoid": [0],
-        "SigmoidGrad": [0],
-        "Max": [0, 1],
-        "Min": [0, 1],
-        "Less": [0, 1],
-        "Greater": [0, 1],
-    }
+    elementwise_operators = [
+        "Abs",
+        "Acos",
+        "Acosh",
+        "Add",
+        "And",
+        "BiasGelu",
+        "Cast",
+        "Clip",
+        "ConstantOfShape",
+        "Div",
+        "Equal",
+        "Erf",
+        "Exp",
+        "Greater",
+        "Gelu",
+        "GeluGrad",
+        "Less",
+        "Log",
+        "MemcpyFromHost",
+        "MemcpyToHost",
+        "Max",
+        "Min",
+        "Mul",
+        "Neg",
+        "Not",
+        "Pow",
+        "Range",
+        "Reshape",
+        "Scale",
+        "Shape",
+        "Sigmoid",
+        "SigmoidGrad",
+        "Sqrt",
+        "Squeeze",
+        "Sub",
+        "Unsqueeze",
+        "Where",
+    ]
 
     node_name_to_tag = {}
 
@@ -682,19 +686,17 @@ def elementwise_subgraph(g: Graph):
 
         def initialize_node_tag(node: Node):
             global has_update
-            if node.type in elementwise_operators.keys():
-                extensible_input_idxs = elementwise_operators[node.type]
-
+            if node.type in elementwise_operators:
                 # update self's other parents use the same tag.
-                idx = 0
-                while idx < len(extensible_input_idxs):
-                    input_arg_name = node.input_arg_names[extensible_input_idxs[idx]]
+                # while idx < len(extensible_input_idxs):
+                for idx in range(len(node.input_arg_names)):
+                    input_arg_name = node.input_arg_names[idx]
                     if g.is_activation(input_arg_name):
                         p_node, _ = g.get_node_with_output_arg_name(
-                            node.input_arg_names[extensible_input_idxs[idx]]
+                            node.input_arg_names[idx]
                         )
                         if (
-                            p_node.type in elementwise_operators.keys()
+                            p_node.type in elementwise_operators
                             and node_name_to_tag[p_node.name]
                             != node_name_to_tag[node.name]
                         ):
@@ -702,8 +704,6 @@ def elementwise_subgraph(g: Graph):
                                 node_name_to_tag[p_node.name],
                                 node_name_to_tag[node.name],
                             )
-
-                    idx += 1
 
         g.iterate_node(initialize_node_tag)
 
