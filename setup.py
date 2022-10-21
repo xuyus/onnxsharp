@@ -63,6 +63,7 @@ setup(
         "bin/ort_get_peak_details",
         "bin/ort_get_peak_op_summary",
         "bin/ort_get_peak_summary",
+        "bin/ort_get_peak_step",
         "bin/ort_parse_peak_summary",
     ],
     classifiers=[

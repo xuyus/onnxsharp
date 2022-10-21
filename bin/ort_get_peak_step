@@ -1,0 +1,7 @@
+#!/bin/bash
+
+file=$1
+
+grep '"name":"Summary"' $file | grep --line-buffered '"ph":"X","pid":' | sort -V > /tmp/$file"_summary_all_steps_sorted.log"
+
+ort_parse_peak_summary --path /tmp/$file"_summary_all_steps_sorted.log"

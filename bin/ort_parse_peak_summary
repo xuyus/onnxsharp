@@ -20,17 +20,29 @@ def main():
         for line in f:
             match = re.match(regexp, line)
             if match:
+                step = int(str(match.group(1)).replace(",", ""))
                 t_id = int(str(match.group(2)).replace(",", ""))
                 total_bytes = int(str(match.group(4)).replace(",", ""))
-                process_dict[t_id] = total_bytes
+                process_dict[t_id] = [total_bytes, step]
             else:
                 print("warning: the line is not parsed correctly:", line)
 
-    sorted_tuples = sorted(process_dict.items(), key=lambda item: item[1], reverse=True)
-    print(f"## The sorted memory consumption for each execution step:")
-    print(f"(execution_step, total_bytes)")
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(sorted_tuples)
+    max_mem_usage = -1
+    max_mem_usage_step = -1
+    for t_id, value in process_dict.items():
+        if value[0] > max_mem_usage:
+            max_mem_usage = value[0]
+            max_mem_usage_step = value[1]
+
+    print(f"max_mem_usage: {max_mem_usage} at step {max_mem_usage_step}")
+
+    # sorted_tuples = sorted(
+    #     process_dict.items(), key=lambda item: item[1][0], reverse=False
+    # )
+    # print(f"## The sorted memory consumption for each execution step:")
+    # print(f"(execution_step, total_bytes)")
+    # pp = pprint.PrettyPrinter(indent=4)
+    # pp.pprint(sorted_tuples)
 
 
 if __name__ == "__main__":
