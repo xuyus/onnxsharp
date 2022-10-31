@@ -9,6 +9,7 @@ import collections
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=str)
+    parser.add_argument("--step", type=int)
     args = parser.parse_args()
 
     # {"ph":"X","pid":10,"tid":15117,"ts":-556704358,"dur":556704358,"name":"Summary","cname":"black","args":{"total_bytes":363857920,"used_bytes":363857920,"free_bytes":0,"used_percent":1,"free_percent":0,"bytes for pattern":363857920}},
@@ -29,12 +30,17 @@ def main():
 
     max_mem_usage = -1
     max_mem_usage_step = -1
+    execution_step = -1
     for t_id, value in process_dict.items():
+        if args.step != -1 and value[1] != args.step:
+            continue
         if value[0] > max_mem_usage:
             max_mem_usage = value[0]
             max_mem_usage_step = value[1]
+            execution_step = t_id
 
-    print(f"max_mem_usage: {max_mem_usage} at step {max_mem_usage_step}")
+
+    print(f"max_mem_usage: {max_mem_usage} at execution step {execution_step} at training step {max_mem_usage_step}")
 
     # sorted_tuples = sorted(
     #     process_dict.items(), key=lambda item: item[1][0], reverse=False

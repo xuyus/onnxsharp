@@ -2,7 +2,7 @@
 
 file=$1
 step=`printf "%'d" $2`
-execution_step=`printf "%'d" $3`
+execution_step=`printf "%d" $3`
 
 echo $step $execution_step
 

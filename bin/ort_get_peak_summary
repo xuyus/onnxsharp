@@ -6,4 +6,4 @@ step=$2
 
 grep '"name":"Summary"' $file | grep --line-buffered '"ph":"X","pid":'${step}',' | sort -V > /tmp/$file"_summary_step_"${step}"_sorted.log"
 
-ort_parse_peak_summary --path /tmp/$file"_summary_step_${step}_sorted.log"
+ort_parse_peak_summary --path /tmp/$file"_summary_step_${step}_sorted.log" --step $step
