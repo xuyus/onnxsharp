@@ -56,7 +56,7 @@ setup(
     packages=find_packages(),
     license="Apache License v2.0",
     author="xuyus",
-    author_email="teams@xuyus.com",
+    author_email="",
     url="https://github.com/xuyus/onnx-sharp",
     install_requires=["numpy>=1.14.1", "onnx>=1.4.1", "pytest", "black"],
     scripts=[
@@ -65,6 +65,8 @@ setup(
         "bin/ort_get_peak_summary",
         "bin/ort_get_peak_step",
         "bin/ort_parse_peak_summary",
+        "bin/ort_scan_output_in_order",
+        "bin/ort_parse_output_name",
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
