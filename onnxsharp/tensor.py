@@ -5,7 +5,7 @@ from onnx import helper, defs, numpy_helper, checker, onnx_pb
 import copy
 from .basics import enforce, Type
 from onnx.numpy_helper import to_array, from_array
-
+import numpy as np
 
 class TensorShape(object):
     def __init__(self, tensor_shape_proto) -> None:
@@ -138,7 +138,7 @@ class Tensor(object):
             onnx_pb.TensorProto.FLOAT,
             onnx_pb.TensorProto.COMPLEX64,
         ]:
-            t._float_data = [f for f in tensor_proto.float_data]
+            t._float_data = np.array([f for f in tensor_proto.float_data], dtype=np.float32)
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.FLOAT16,
@@ -150,54 +150,54 @@ class Tensor(object):
             onnx_pb.TensorProto.UINT8,
             onnx_pb.TensorProto.UINT16,
         ]:
-            t._int32_data = [i for i in tensor_proto.int32_data]
+            t._int32_data = np.array([i for i in tensor_proto.int32_data], dtype=np.int32)
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.INT64,
         ]:
-            t._int64_data = [i for i in tensor_proto.int64_data]
+            t._int64_data = np.array([i for i in tensor_proto.int64_data], dtype=np.int64)
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.UINT32,
             onnx_pb.TensorProto.UINT64,
         ]:
-            t._uint64_data = [i for i in tensor_proto.uint64_data]
+            t._uint64_data = np.array([i for i in tensor_proto.uint64_data], dtype=np.uint64)
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.DOUBLE,
             onnx_pb.TensorProto.COMPLEX128,
         ]:
-            t._double_data = [i for i in tensor_proto.double_data]
+            t._double_data = np.array([i for i in tensor_proto.double_data], dtype=np.float64)
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.STRING,
         ]:
-            t._string_data = [i for i in tensor_proto.string_data]
+            t._string_data = np.array([i for i in tensor_proto.string_data], dtype=np.object)
 
         return t
 
     @property
     def value(self):
 
-        if self._float_data:
+        if self._float_data is not None:
             return self._float_data
 
-        if self._int32_data:
+        if self._int32_data is not None:
             return self._int32_data
 
-        if self._int64_data:
+        if self._int64_data is not None:
             return self._int64_data
 
-        if self._uint64_data:
+        if self._uint64_data is not None:
             return self._uint64_data
 
-        if self._double_data:
+        if self._double_data is not None:
             return self._double_data
 
-        if self._string_data:
+        if self._string_data is not None:
             return self._string_data
 
-        if self._raw_value:
+        if self._raw_value is not None:
             return self._raw_value
 
     def to_proto(self):
@@ -209,7 +209,7 @@ class Tensor(object):
             onnx_pb.TensorProto.FLOAT,
             onnx_pb.TensorProto.COMPLEX64,
         ]:
-            tensor_proto.float_data.extend(self._float_data)
+            tensor_proto.float_data.extend(self._float_data.tolist())
 
         if self._data_type in [
             onnx_pb.TensorProto.FLOAT16,
@@ -221,29 +221,29 @@ class Tensor(object):
             onnx_pb.TensorProto.UINT8,
             onnx_pb.TensorProto.UINT16,
         ]:
-            tensor_proto.int32_data.extend(self._int32_data)
+            tensor_proto.int32_data.extend(self._int32_data.tolist())
 
         if self._data_type in [
             onnx_pb.TensorProto.INT64,
         ]:
-            tensor_proto.int64_data.extend(self._int64_data)
+            tensor_proto.int64_data.extend(self._int64_data.tolist())
 
         if self._data_type in [
             onnx_pb.TensorProto.UINT32,
             onnx_pb.TensorProto.UINT64,
         ]:
-            tensor_proto.uint64_data.extend(self._uint64_data)
+            tensor_proto.uint64_data.extend(self._uint64_data.tolist())
 
         if self._data_type in [
             onnx_pb.TensorProto.DOUBLE,
             onnx_pb.TensorProto.COMPLEX128,
         ]:
-            tensor_proto.double_data.extend(self._double_data)
+            tensor_proto.double_data.extend(self._double_data.tolist())
 
         if self._data_type in [
             onnx_pb.TensorProto.STRING,
         ]:
-            tensor_proto.string_data.extend(self._string_data)
+            tensor_proto.string_data.extend(self._string_data.tolist())
 
         tensor_proto.dims.extend(self._dims)
         tensor_proto.data_type = self._data_type

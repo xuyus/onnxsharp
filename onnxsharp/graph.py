@@ -40,7 +40,7 @@ class Graph(object):
         # string doc_string = 10;
         g._doc_string = graph_proto.doc_string
 
-        # // The inputs and outputs of the graph.
+        # The inputs and outputs of the graph.
         # repeated ValueInfoProto input = 11;
         for value_info_proto in graph_proto.input:
             g._input_map[value_info_proto.name] = ValueInfo.from_proto(value_info_proto)
@@ -51,8 +51,8 @@ class Graph(object):
                 value_info_proto
             )
 
-        # // Information for the values in the graph. The ValueInfoProto.name's
-        # // must be distinct. It is optional for a value to appear in value_info list.
+        # Information for the values in the graph. The ValueInfoProto.name's
+        # must be distinct. It is optional for a value to appear in value_info list.
         # repeated ValueInfoProto value_info = 13;
         value_info_map = OrderedDict()
         for value_info_proto in graph_proto.value_info:
@@ -462,36 +462,36 @@ class Graph(object):
 
         def _summarize_tensors(tensors_map):
             for initializer_name, tensor in tensors_map:
-                if np.isnan(tensor._value).any():
+                if np.isnan(tensor.value).any():
                     if initializer_name not in nan_tensor_names:
                         nan_tensor_names[initializer_name] = tensor
                     continue
 
-                if np.isinf(tensor._value).any():
+                if np.isinf(tensor.value).any():
                     if initializer_name not in nan_tensor_names:
                         inf_tensor_names[initializer_name] = tensor
                     continue
 
                 subnormal_candidiates = np.logical_and(
-                    np.abs(tensor._value) > 0,
-                    np.abs(tensor._value) <= smallest_subnormal_number,
+                    np.abs(tensor.value) > 0,
+                    np.abs(tensor.value) <= smallest_subnormal_number,
                 )
                 if subnormal_candidiates.any():
-                    to_print = tensor._value
-                    if tensor._value.ndim > 0:
+                    to_print = tensor.value
+                    if tensor.value.ndim > 0:
                         indices = np.where(subnormal_candidiates)
-                        to_print = tensor._value[indices]
+                        to_print = tensor.value[indices]
 
                     print(
                         f"Warning: find a tensor {initializer_name} having subnormal number {to_print} around fp16 lower boundary."
                     )
 
-                around_fp16_boundary = np.abs(tensor._value) >= largest_norm_number
+                around_fp16_boundary = np.abs(tensor.value) >= largest_norm_number
                 if around_fp16_boundary.any():
-                    to_print = tensor._value
-                    if tensor._value.ndim > 0:
+                    to_print = tensor.value
+                    if tensor.value.ndim > 0:
                         indices = np.where(around_fp16_boundary)
-                        to_print = tensor._value[indices]
+                        to_print = tensor.value[indices]
 
                     print(
                         f"Warning: find a tensor {initializer_name} having number {to_print} around fp16 upper boundary."
@@ -503,7 +503,7 @@ class Graph(object):
         for _, n in self._node_name_mapping.items():
             if n.type == "Constant":
                 constant_tensors[n.output_arg_names[0]] = Tensor.from_proto(
-                    n._attr["value"]._value
+                    n._attr["value"].value
                 )
 
         _summarize_tensors(constant_tensors.items())
