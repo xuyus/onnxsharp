@@ -548,6 +548,16 @@ def _create_graph_from_nodes(g: Graph, g_nodes: List[Node]):
 def clip_subgraph_around(g: Graph, output_arg_name):
     print(f"clip_subgraph_around>> output_arg_name: {output_arg_name}")
     g_nodes = []
+
+    if g.is_null(output_arg_name):
+        raise RuntimeError("output_arg_name is null.")
+
+    if g.is_initializer(output_arg_name):
+        raise RuntimeError("output_arg_name is an initializer, stop searching.")
+
+    if g.is_input(output_arg_name):
+        raise RuntimeError("output_arg_name is an input, stop searching.")
+
     n, index = g.get_node_with_output_arg_name(output_arg_name)
     print(f"{n.output_arg(index)}")
 

@@ -3,7 +3,7 @@
 file=$1
 dump_dir=$2
 
-grep -E "Output 0 Name: |Output 1 Name: |Output 2 Name: |Output 3 Name: " $file > $file.output_names
+grep -E "Input 0 Name: |Input 1 Name: |Input 2 Name: |Input 3 Name: |Input 4 Name: |Input 5 Name: |Input 6 Name: " $file > $file.output_names
 
 ort_parse_output_name --path $file.output_names --dump_dir $dump_dir
 

@@ -20,7 +20,7 @@ def main():
     # [1,0]<stdout>:Output 0 Name: _original_module.roberta.embeddings.token_type_embeddings.weight_grad
     # [1,0]<stdout>:Output 0 Name: _original_module.roberta.embeddings.word_embeddings.weight_grad
 
-    regexp = '[\s\S]*:Output ([0-9,]+) Name: ([\s\S]+)'
+    regexp = '[\s\S]*:Input ([0-9,]+) Name: ([\s\S]+)'
     output_path = args.path + ".output"
     with open(output_path, "w") as f2:
         with open(args.path) as f:

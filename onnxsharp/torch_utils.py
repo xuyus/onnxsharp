@@ -13,8 +13,6 @@ def dump_parameters_and_grads_before_step_start(module, dir_to_save, max_step_ru
     print(f"enter dump_parameters_and_grads_before_step_start at step {run_steps}")
     # module.register_forward_pre_hook(_post_backward_module_hook)
     # def _ort_pre_forward_module_hook(module, inputs):
-    
-    run_steps += 1
 
     dir_for_param = os.path.join(dir_to_save, "params")
     os.makedirs(dir_for_param, exist_ok=True)
@@ -27,8 +25,10 @@ def dump_parameters_and_grads_before_step_start(module, dir_to_save, max_step_ru
         grads[name] = param.grad
     torch.save(grads, os.path.join(dir_for_grad, f"{run_steps}"))
 
+    run_steps += 1
     if run_steps >= max_step_run:
         raise RuntimeError("Stop by intention to save the model.")
+
 
 def compare_parameters_and_grads(a_dir_to_load, b_dir_to_load, step):
     # def _post_backward_module_hook(module, inputs):
