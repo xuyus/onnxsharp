@@ -47,6 +47,7 @@ def compare_parameters_and_grads(a_dir_to_load, b_dir_to_load, step):
         non_close_count = torch.sum(torch.logical_not(torch.isclose(param, b_param_map[name], rtol=1e-05, atol=1e-08, equal_nan=True)))
         if non_close_count > 0:
             print(f"param [{name}, {param.shape}] has {non_close_count} non-close elements. e.g. {param.view(-1)[0:20]} vs {b_param_map[name].view(-1)[0:20]}")
+            # print(torch.nonzero(torch.logical_not(torch.isclose(param, b_param_map[name], rtol=1e-05, atol=1e-08, equal_nan=True))))
 
 
     a_grads = torch.load(os.path.join(a_dir_to_load, "grads", f"{step}"))
@@ -63,4 +64,27 @@ def compare_parameters_and_grads(a_dir_to_load, b_dir_to_load, step):
         if non_close_count > 0:
             print(f"grad [{name}, {grad.shape}] has {non_close_count} non-close elements. e.g. {grad.view(-1)[0:20]} vs {b_grads[name].view(-1)[0:20]}")
 
+from .npy_utils import npy_summurize_array
 
+class DataObserver(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, name, input):
+        val = None
+        if input is None or not isinstance(input, torch.Tensor):
+            val = input
+        else:
+            val = input.detach().cpu().numpy()
+        npy_summurize_array(val, name + "_forward")
+        ctx.name = name
+        return input.detach() if input is not None else None
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        val = None
+        if grad_output is None or not isinstance(grad_output, torch.Tensor):
+            val = grad_output
+        else:
+            val = grad_output.detach().cpu().numpy()
+            
+        npy_summurize_array(val, ctx.name + "_backward")
+        return None, grad_output.detach() if grad_output is not None else None
