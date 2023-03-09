@@ -3,12 +3,15 @@
 
 Operate on your ONNX model with ease.
 
-Load model:
+Load/Save model:
 
 ```python
-model_proto = onnx.load(args.src)
+import onnx
 from onnxsharp import Model
+
+model_proto = onnx.load(args.src)
 m = Model.from_proto(model_proto)
+new_m.save_model(f"new_model.onnx") # An alternative: onnx.save(new_m.to_proto(), f"new_model.onnx")
 ```
 
 Access Graph APIs:
