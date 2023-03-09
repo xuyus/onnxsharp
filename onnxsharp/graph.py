@@ -521,7 +521,7 @@ class Graph(object):
         # pp.pprint(self._initializer_map.items())
 
     def summarize_nodes(
-        self, level=0, with_excution_plan=False, include_shape=False, op_type=None
+        self, level=0, with_execution_plan=False, include_shape=False, op_type=None
     ):
         import pprint
 
@@ -541,7 +541,7 @@ class Graph(object):
             types_str = ",".join(optypestr_list)
             execution_str = (
                 "@" + str(n._ort_program_counter)
-                if with_excution_plan is True and n._ort_program_counter is not None
+                if with_execution_plan is True and n._ort_program_counter is not None
                 else ""
             )
             bw_str = (

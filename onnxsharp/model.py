@@ -104,3 +104,29 @@ class Model(object):
         model_proto = helper.make_model(self._graph.to_proto(), **kwargs)
         model_proto.metadata_props.extend(self._metadata_props)
         return model_proto
+
+    def save_model(
+        self,
+        path,
+        save_as_external_data=False,
+        all_tensors_to_one_file=True,
+        location="filename",
+        size_threshold=1024,
+        convert_attribute=False,
+    ):
+        from .basics import save_onnx_model
+
+        save_onnx_model(
+            self.to_proto(),
+            path,
+            save_as_external_data,
+            all_tensors_to_one_file,
+            location,
+            size_threshold,
+            convert_attribute,
+        )
+
+    def save_model_to_string(self, path):
+        from .basics import save_onnx_model_to_string
+
+        save_onnx_model_to_string(self.to_proto(), path)

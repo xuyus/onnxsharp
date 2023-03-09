@@ -65,8 +65,8 @@ def test_clip_subgraph_from_output_arg():
 
 
 @pytest.mark.parametrize("level", [0, 1, 2])
-@pytest.mark.parametrize("with_excution_plan", [False, True])
-def test_node_print(level, with_excution_plan):
+@pytest.mark.parametrize("with_execution_plan", [False, True])
+def test_node_print(level, with_execution_plan):
     src = "./testdata/ort_sample_model.onnx"
     model_proto = onnx.load(src)
     from onnxsharp import Model, Graph, Node, fill_with_execution_plan
@@ -75,7 +75,7 @@ def test_node_print(level, with_excution_plan):
     # Optionally load execution plan exported by ORT.
     # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
 
-    m._graph.summarize_nodes(level, with_excution_plan=with_excution_plan)
+    m._graph.summarize_nodes(level, with_execution_plan=with_execution_plan)
 
 
 @pytest.mark.parametrize(
@@ -130,3 +130,14 @@ def test_cluster_elementwise_operations():
         new_m = Model.copy_config(m, subgraph[0])
         onnx.save(new_m.to_proto(), dest)
         idx += 1
+
+
+def test_save_model():
+    src = "./testdata/ort_sample_model.onnx"
+    model_proto = onnx.load(src)
+    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+
+    m = Model.from_proto(model_proto)
+    m.save_model("./saved_model.onnx")
+    m.save_model("./saved_model_external_data.onnx", save_as_external_data=True)
+    m.save_model_to_string("./saved_model.txt")

@@ -3,6 +3,8 @@ from .node import NodeArg, Node, ValueInfo
 from .model import Model
 from .tensor import Tensor, TensorShape, TensorType
 
+from .basics import save_onnx_model_to_string, save_onnx_model
+
 from .graph_utils import (
     clip_subgraph_around,
     topological_sort,
@@ -17,5 +19,9 @@ from .graph_utils import (
 from .interactive import select_model, sum_nodes, list_nodes, clip_graph, how
 
 from .npy_utils import npy_summurize_array
-from .torch_utils import dump_parameters_and_grads_before_step_start, compare_parameters_and_grads, DataObserver
+from .torch_utils import (
+    dump_parameters_and_grads_before_step_start,
+    compare_parameters_and_grads,
+    DataObserver,
+)
 from .ort_utils import ort_scan_tensor_from_dump, ort_get_tensor_from_dump
