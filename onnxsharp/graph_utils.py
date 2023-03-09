@@ -630,7 +630,7 @@ tag = 0
 has_update = False
 
 
-def elementwise_subgraph(g: Graph):
+def auto_cluster_pointwise_graphs(g: Graph):
     global tag
     global has_update
     elementwise_operators = [

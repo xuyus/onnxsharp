@@ -14,7 +14,7 @@ from onnxsharp import (
     Graph,
     Node,
     clip_subgraph_around,
-    elementwise_subgraph,
+    auto_cluster_pointwise_graphs,
 )
 from onnx import helper, defs, numpy_helper, checker, onnx_pb
 from collections import OrderedDict
@@ -32,8 +32,7 @@ def main():
     # {"ph":"X","pid":10,"tid":2,628,"ts":8,296,333,312,"dur":16,777,216,"name":"onnx::MatMul_1397","cname":"thread_state_unknown","args":{"name":"onnx::MatMul_1397","offset":8,296,333,312,"size":16,777,216}},
     regexp = '[\s\S]*{"ph":"X","pid":([0-9,]+),"tid":([0-9,]+),"ts":[-]?[0-9,]+,"dur":([0-9,]+),"name":"([\s\S]+)","cname":"[\s\S]+","args":{"name":"[\s\S]+","offset":[0-9,]+,"size":([0-9,]+)}},[\s\S]*'
 
-    model_proto = onnx.load(args.mpath)
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(args.mpath)
 
     op_type_count = OrderedDict()
     op_type_to_shapes = OrderedDict()

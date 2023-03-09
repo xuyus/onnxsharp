@@ -6,14 +6,14 @@ from onnxsharp import (
     Node,
     LogicalSubgraphInfo,
     create_graph_from_logical_subgraph,
-    elementwise_subgraph,
+    auto_cluster_pointwise_graphs,
 )
+
+src = "./testdata/ort_sample_model.onnx"
 
 
 def test_subgraph_extraction():
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(src)
 
     inputs_of_yield = set()
 
@@ -43,35 +43,24 @@ def test_subgraph_extraction():
 
     subgraph = create_graph_from_logical_subgraph(subgraph_info)
     new_m = Model.copy_config(m, subgraph)
-
-    tmp_filename = "extract_subgraph.onnx"
-    onnx.save(new_m.to_proto(), tmp_filename)
-
-    model_proto2 = onnx.load(tmp_filename)
-    m2 = Model.from_proto(model_proto2)
+    new_m.save_model("extract_subgraph.onnx")
 
 
 def test_clip_subgraph_from_output_arg():
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, clip_subgraph_around
+    from onnxsharp import Model, clip_subgraph_around
 
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(src)
     new_g = clip_subgraph_around(m._graph, "onnx::Gemm_6")
     new_m = Model.copy_config(m, new_g)
-
-    dest = f"clipped_subgraph.onnx"
-    onnx.save(new_m.to_proto(), dest)
+    new_m.save_model("clipped_subgraph.onnx")
 
 
 @pytest.mark.parametrize("level", [0, 1, 2])
 @pytest.mark.parametrize("with_execution_plan", [False, True])
 def test_node_print(level, with_execution_plan):
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+    from onnxsharp import Model, fill_with_execution_plan
 
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(src)
     # Optionally load execution plan exported by ORT.
     # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
 
@@ -85,11 +74,9 @@ def test_node_print(level, with_execution_plan):
     ],
 )
 def test_tensor_print(model_path):
-    src = model_path
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+    from onnxsharp import Model
 
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(model_path)
     m._graph.summarize_tensors()
 
     level = 0
@@ -97,11 +84,9 @@ def test_tensor_print(model_path):
 
 
 def test_node_include_shape_print(level=0):
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+    from onnxsharp import Model, fill_with_execution_plan
 
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(src)
     # Optionally load execution plan exported by ORT.
     # fill_with_execution_plan(m._graph, "testdata/execution_plan.log")
 
@@ -109,20 +94,15 @@ def test_node_include_shape_print(level=0):
 
 
 def test_desc_graph_inputs():
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+    from onnxsharp import Model
 
-    m = Model.from_proto(model_proto)
-
+    m = Model.load_model(src)
     m._graph.summarize_inputs()
 
 
-def test_cluster_elementwise_operations():
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    m = Model.from_proto(model_proto)
-    rets = elementwise_subgraph(m._graph)
+def test_auto_clustering():
+    m = Model.load_model(src)
+    rets = auto_cluster_pointwise_graphs(m._graph)
     prefix = "ort_sample_"
     idx = 0
     for _, subgraph in rets.items():
@@ -133,11 +113,9 @@ def test_cluster_elementwise_operations():
 
 
 def test_save_model():
-    src = "./testdata/ort_sample_model.onnx"
-    model_proto = onnx.load(src)
-    from onnxsharp import Model, Graph, Node, fill_with_execution_plan
+    from onnxsharp import Model
 
-    m = Model.from_proto(model_proto)
+    m = Model.load_model(src)
     m.save_model("./saved_model.onnx")
     m.save_model("./saved_model_external_data.onnx", save_as_external_data=True)
     m.save_model_to_string("./saved_model.txt")

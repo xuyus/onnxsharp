@@ -6,12 +6,13 @@ Operate on your ONNX model with ease.
 Load/Save model:
 
 ```python
-import onnx
 from onnxsharp import Model
 
-model_proto = onnx.load(args.src)
-m = Model.from_proto(model_proto)
+m = Model.load_model("model.onnx") # An alternative: Model.from_proto(onnx.load("model.onnx"))
+...
+
 new_m.save_model(f"new_model.onnx") # An alternative: onnx.save(new_m.to_proto(), f"new_model.onnx")
+
 ```
 
 Access Graph APIs:
@@ -90,7 +91,7 @@ subgraph_info = LogicalSubgraphInfo(
 )
 subgraph =create_graph_from_logical_subgraph(subgraph_info)
 new_m = Model.copy_config(m, subgraph)
-new_m.save_model(f"new_model.onnx") # An alternative: onnx.save(new_m.to_proto(), f"new_model.onnx")
+new_m.save_model(f"new_model.onnx")
 
 
 # Add Node/Inputs/Initializers/Outputs:

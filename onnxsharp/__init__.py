@@ -12,11 +12,9 @@ from .graph_utils import (
     create_graph_from_logical_subgraph,
     fill_with_execution_plan,
     bfs_from_output,
-    elementwise_subgraph,
+    auto_cluster_pointwise_graphs,
 )
 
-
-from .interactive import select_model, sum_nodes, list_nodes, clip_graph, how
 
 from .npy_utils import npy_summurize_array
 from .torch_utils import (

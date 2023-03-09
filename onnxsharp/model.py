@@ -105,6 +105,11 @@ class Model(object):
         model_proto.metadata_props.extend(self._metadata_props)
         return model_proto
 
+    @classmethod
+    def load_model(cls, path):
+        model_proto = onnx.load(path)
+        return Model.from_proto(model_proto)
+
     def save_model(
         self,
         path,
