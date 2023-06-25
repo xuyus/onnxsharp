@@ -1,8 +1,17 @@
-def topological_sort(graph, ops: List[Node]) -> List[Node]:
+def topological_sort(GraphProto graph, ops: List[NodeProto], bool is_subgraph=False) -> List[NodeProto]:
     """Topological sort of graph."""
     # sort by name, the result will be reversed alphabeta
     ops.sort(key=lambda op: op.name)
 
+    graph_inputs: List[str] = graph.input
+    graph_initializer: List[str] = graph.initializer
+    graph_outputs = graph.output
+    
+    arg_name_to_node_map = {}
+    for op in ops:
+        for o_str in op.output:
+            arg_name_to_node_map[o_str] = op
+            
     def _push_stack(stack, node, in_stack):
         stack.append(node)
         if node in in_stack:
@@ -26,21 +35,18 @@ def topological_sort(graph, ops: List[Node]) -> List[Node]:
     for i, op in enumerate(ops):
         input_arg_names = sorted(set(op.input_arg_names))
         for arg_name in input_arg_names:
-            if graph.is_null(arg_name):
+            if arg_name in arg_name_to_node_map:
+                j = arg_name_to_node_map[arg_name]
+                g[op_name_to_index[j.name]].append(i)
+            elif arg_name in graph_inputs or arg_name in graph_initializer:
                 continue
-
-            if not graph.is_activation(arg_name):
+            elif is_subgraph:
+                # todo check from parent graph
                 continue
+            else:
+                raise RuntimeError()
 
-            j, _ = graph.get_node_with_output_arg_name(arg_name)
-            enforce(j is not None, f"Node not found to generate output arg {arg_name}")
-
-            if j.name not in op_name_to_index:
-                # this is a temp fix
-                continue
-            enforce(j.name in op_name_to_index, f"Node {j.name} not exist.")
-            g[op_name_to_index[j.name]].append(i)
-
+                
     # label for each op. highest = sink nodes.
     label = [-1 for _ in range(n)]
     stack = []
