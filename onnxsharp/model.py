@@ -106,8 +106,8 @@ class Model(object):
         return model_proto
 
     @classmethod
-    def load_model(cls, path):
-        model_proto = onnx.load(path)
+    def load_model(cls, path, load_external_data=True):
+        model_proto = onnx.load(path, load_external_data=load_external_data)
         return Model.from_proto(model_proto)
 
     def save_model(

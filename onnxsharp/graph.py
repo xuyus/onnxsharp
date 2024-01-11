@@ -89,6 +89,9 @@ class Graph(object):
     def update_node_mapping(self, new_node: Node):
         self._node_name_mapping[new_node.name] = new_node
         for index, o in enumerate(new_node.output_arg_names):
+            # Skip if the output arg is null.
+            if self.is_null(o):
+                continue
             self._output_arg_name_to_node_mapping[o] = (new_node, index)
 
     def get_tensor(self, output_arg_name: str) -> Tensor:
@@ -240,7 +243,10 @@ class Graph(object):
     # Correspondingly, removing from graph outputs, it is still an activation.
     def add_output(self, output_arg_name, value_info: ValueInfo):
         enforce(value_info is not None, "value_info should not be None")
-        enforce(not self.is_null(output_arg_name), f"{output_arg_name} is null")
+        enforce(
+            not self.is_null(output_arg_name),
+            f"output arg name [{output_arg_name}] is null",
+        )
         enforce(
             not self.is_input(output_arg_name),
             f"{output_arg_name} already exists as input.",
