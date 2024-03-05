@@ -6,7 +6,8 @@ from onnx import helper, defs, numpy_helper, checker
 import copy
 import numpy as np
 
-from .node import enforce, Node, NodeArg, ValueInfo
+from .node import enforce, Node, NodeArg, ValueInfo, Attribute, AttributeType
+
 from .tensor import TensorType, Tensor, TensorShape
 
 
@@ -533,6 +534,22 @@ class Graph(object):
 
         pp = pprint.PrettyPrinter(indent=4)
 
+        def _get_primitive_attr_pattern(a: Attribute):
+            if a._type == AttributeType.FLOAT:
+                return f"{a._name}_F_{a._value}"
+            elif a._type == AttributeType.INT:
+                return f"{a._name}_I_{a._value}"
+            elif a._type == AttributeType.STRING:
+                return f"{a._name}_S_{a._value}"
+            elif a._type == AttributeType.FLOATS:
+                return f"{a._name}_FS_{a._value}"
+            elif a._type == AttributeType.INTS:
+                return f"{a._name}_IS_{a._value}"
+            elif a._type == AttributeType.STRINGS:
+                return f"{a._name}_SS_{a._value}"
+            else:
+                return ""
+
         def _get_node_pattern(n: Node, cur_level):
             optypestr_list = []
             if cur_level < level:
@@ -544,7 +561,7 @@ class Graph(object):
                     node_str = _get_node_pattern(p_node, cur_level + 1)
                     optypestr_list.append(node_str)
 
-            types_str = ",".join(optypestr_list)
+            types_str = "(" + ",".join(optypestr_list) + ")" if optypestr_list else ""
             execution_str = (
                 "@" + str(n._ort_program_counter)
                 if with_execution_plan is True and n._ort_program_counter is not None
@@ -560,14 +577,27 @@ class Graph(object):
             if include_shape is True:
                 all_input_shape_str = ",".join(
                     [
-                        "(" + ",".join([str(s) for s in node_input_arg.shape]) + ")"
-                        if node_input_arg.shape
-                        else "None"
+                        (
+                            "(" + ",".join([str(s) for s in node_input_arg.shape]) + ")"
+                            if node_input_arg.shape
+                            else "None"
+                        )
                         for node_input_arg in n._input_args
                     ]
                 )
                 shape_str = f"<-[{all_input_shape_str}]"
-            return f"{n.type}{bw_str}{execution_str}({types_str}){shape_str}"
+
+            attribute_str = "_" + ",".join(
+                [
+                    _get_primitive_attr_pattern(attr)
+                    for _, attr in n._attr.items()
+                    if n._type not in ["PythonOp", "PythonOpGrad"]
+                ]
+            )
+
+            return (
+                f"{n.type}{attribute_str}{bw_str}{execution_str}{types_str}{shape_str}"
+            )
 
         op_type_str_summary: OrderedDict[str, int] = OrderedDict()
         for name, node in self._node_name_mapping.items():
