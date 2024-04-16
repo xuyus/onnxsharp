@@ -567,11 +567,7 @@ class Graph(object):
                 if with_execution_plan is True and n._ort_program_counter is not None
                 else ""
             )
-            bw_str = (
-                "_B"
-                if n._doc_string is not None and "Backward pass" in n._doc_string
-                else ""
-            )
+            bw_str = ""  # attribute contains backward pass information
 
             shape_str = ""
             if include_shape is True:
