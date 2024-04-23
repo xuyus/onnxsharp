@@ -67,6 +67,7 @@ setup(
         "bin/ort_parse_peak_summary",
         "bin/ort_scan_output_in_order",
         "bin/ort_parse_output_name",
+        "bin/onnx_summarize",
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

@@ -3,6 +3,18 @@
 
 Operate on your ONNX model with ease.
 
+### Command Line Interface
+
+```bash
+
+pip install --upgrade onnx-sharp
+
+onnx_summarize --model model.onnx
+
+```
+
+### Python APIs
+
 Load/Save model:
 
 ```python

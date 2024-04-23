@@ -1,0 +1,28 @@
+import argparse
+
+from onnxsharp import (
+    Model,
+)
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+    # int argument level, by default being 0
+    parser.add_argument("--level", type=int, default=0)
+    # bool argument include_shape, by default being False
+    parser.add_argument("--include_shape", type=bool, default=False)
+
+    args = parser.parse_args()
+
+    m = Model.load_model(args.model)
+
+    print("=== Summarizing Nodes ===")
+    m._graph.summarize_nodes(args.level, include_shape=args.include_shape)
+    print("=== Summarizing Inputs ===")
+    m._graph.summarize_inputs()
+
+
+if __name__ == "__main__":
+    main()
