@@ -65,3 +65,52 @@ def cli_onnx_clip_subgraph():
         new_g = clip_subgraph_around(m._graph, output_name)
         new_m = Model.copy_config(m, new_g)
         new_m.save_model(f"{generate_safe_file_name(args.node_name)}.onnx")
+
+
+def cli_onnx_get_nodes():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+    # Either op_type or node_name or node_output_name must be provided
+    parser.add_argument("--op_type", type=str)
+    parser.add_argument("--node_name", type=str)
+    parser.add_argument("--node_output_name", type=str)
+
+    args = parser.parse_args()
+
+    if (
+        args.op_type is None
+        and args.node_name is None
+        and args.node_output_name is None
+    ):
+        raise ValueError(
+            "Either op_type or node_name or node_output_name must be provided."
+        )
+
+    if args.op_type is not None and args.node_name is not None:
+        raise ValueError("Only one of op_type or node_name can be provided.")
+
+    if args.op_type is not None and args.node_output_name is not None:
+        raise ValueError("Only one of op_type or node_output_name can be provided.")
+
+    if args.node_name is not None and args.node_output_name is not None:
+        raise ValueError("Only one of node_name or node_output_name can be provided.")
+
+    m = Model.load_model(args.model)
+
+    nodes = []
+
+    def output_filter_func(node):
+        if args.op_type is not None and node.type == args.op_type:
+            nodes.append(node)
+        if args.node_name is not None and node.name == args.node_name:
+            nodes.append(node)
+        if (
+            args.node_output_name is not None
+            and args.node_output_name in node.output_arg_names
+        ):
+            nodes.append(node)
+
+    m._graph.iterate_node(output_filter_func)
+
+    for node in nodes:
+        print(node)
