@@ -1,0 +1,67 @@
+import argparse
+
+from onnxsharp import (
+    Model,
+    clip_subgraph_around,
+    generate_safe_file_name,
+)
+
+
+def cli_onnx_summarize():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+    # int argument level, by default being 0
+    parser.add_argument("--level", type=int, default=0)
+    # bool argument include_shape, by default being False
+    parser.add_argument("--include_shape", type=bool, default=False)
+    # bool argument summary_inputs, by default being False
+    parser.add_argument("--include_inputs", type=bool, default=False)
+
+    args = parser.parse_args()
+
+    m = Model.load_model(args.model)
+
+    print("=== Summarizing Nodes ===")
+    m._graph.summarize_nodes(args.level, include_shape=args.include_shape)
+
+    if args.include_inputs:
+        print("=== Summarizing Inputs ===")
+        m._graph.summarize_inputs()
+
+
+def cli_onnx_clip_subgraph():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+
+    # Add a argument that could be either node_name or node_output_name
+    parser.add_argument("--node_name", type=str)
+    parser.add_argument("--node_output_name", type=str)
+
+    args = parser.parse_args()
+
+    if args.node_name is None and args.node_output_name is None:
+        raise ValueError("Either node_name or node_output_name must be provided.")
+
+    if args.node_name is not None and args.node_output_name is not None:
+        raise ValueError("Only one of node_name or node_output_name can be provided.")
+
+    m = Model.load_model(args.model)
+    if args.node_output_name:
+        new_g = clip_subgraph_around(m._graph, args.node_output_name)
+        new_m = Model.copy_config(m, new_g)
+        new_m.save_model(f"{generate_safe_file_name(args.node_output_name)}.onnx")
+
+    if args.node_name:
+        # Get one of the output names of the node
+        target_node = [None]
+
+        def input_filter_func(node):
+            if node.name == args.node_name:
+                target_node[0] = node
+
+        m._graph.iterate_node(input_filter_func)
+
+        output_name = target_node[0].output_arg_names[0]
+        new_g = clip_subgraph_around(m._graph, output_name)
+        new_m = Model.copy_config(m, new_g)
+        new_m.save_model(f"{generate_safe_file_name(args.node_name)}.onnx")

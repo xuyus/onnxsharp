@@ -6,6 +6,17 @@ def enforce(status, msg):
         raise RuntimeError("exception raised during execution: ", msg)
 
 
+def generate_safe_file_name(line):
+    return (
+        line.replace(".", "_")
+        .replace(":", "_")
+        .replace("/", "_")
+        .replace("-", "_")
+        .replace("\r", "")
+        .replace("\n", "")
+    )
+
+
 class Type(object):
     def __init__(self) -> None:
         pass

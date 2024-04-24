@@ -11,6 +11,10 @@ pip install --upgrade onnx-sharp
 
 onnx_summarize --model model.onnx
 
+onnx_clip_subgraph --model model.onnx --node_name <node name>
+
+onnx_clip_subgraph --model model.onnx --node_output_name <node output name>
+
 ```
 
 ### Python APIs

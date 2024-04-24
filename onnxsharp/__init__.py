@@ -3,7 +3,7 @@ from .node import NodeArg, Node, ValueInfo
 from .model import Model
 from .tensor import Tensor, TensorShape, TensorType
 
-from .basics import save_onnx_model_to_string, save_onnx_model
+from .basics import save_onnx_model_to_string, save_onnx_model, generate_safe_file_name
 
 from .graph_utils import (
     clip_subgraph_around,

@@ -59,6 +59,12 @@ setup(
     author_email="",
     url="https://github.com/xuyus/onnx-sharp",
     install_requires=["numpy>=1.14.1", "onnx>=1.4.1", "pytest", "black"],
+    entry_points={
+        "console_scripts": [
+            "onnx_summarize=onnxsharp.command_line:cli_onnx_summarize",
+            "onnx_clip_subgraph=onnxsharp.command_line:cli_onnx_clip_subgraph",
+        ],
+    },
     scripts=[
         "bin/ort_get_peak_details",
         "bin/ort_get_peak_op_summary",
@@ -67,7 +73,6 @@ setup(
         "bin/ort_parse_peak_summary",
         "bin/ort_scan_output_in_order",
         "bin/ort_parse_output_name",
-        "bin/onnx_summarize",
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
