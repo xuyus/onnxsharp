@@ -7,13 +7,17 @@ Operate on your ONNX model with ease.
 
 ```bash
 
-pip install --upgrade onnx-sharp
+pip install --upgrade onnxsharp
 
 onnx_summarize --model model.onnx
+
+use `onnx_summarize -h` for more arguments.
 
 onnx_clip_subgraph --model model.onnx --node_name <node name>
 
 onnx_clip_subgraph --model model.onnx --node_output_name <node output name>
+
+use `onnx_clip_subgraph -h` for more arguments.
 
 ```
 
