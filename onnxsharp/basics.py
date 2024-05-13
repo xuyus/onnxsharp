@@ -51,11 +51,11 @@ def save_onnx_model(
     onnx.save_model(
         model_proto,
         path,
-        save_as_external_data,
-        all_tensors_to_one_file,
-        location,
-        size_threshold,
-        convert_attribute,
+        save_as_external_data=save_as_external_data,
+        all_tensors_to_one_file=all_tensors_to_one_file,
+        location=location,
+        size_threshold=size_threshold,
+        convert_attribute=convert_attribute,
     )
     print(
         f"Saved model to {path} successfully."
