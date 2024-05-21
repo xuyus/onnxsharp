@@ -19,6 +19,8 @@ onnx_clip_subgraph --model model.onnx --node_output_name <node output name>
 
 use `onnx_clip_subgraph -h` for more arguments.
 
+onnx_to_text --model model.onnx # Convert the binary file to text file (for readability)
+
 ```
 
 ### Python APIs

@@ -64,6 +64,7 @@ setup(
             "onnx_summarize=onnxsharp.command_line:cli_onnx_summarize",
             "onnx_clip_subgraph=onnxsharp.command_line:cli_onnx_clip_subgraph",
             "onnx_get_nodes=onnxsharp.command_line:cli_onnx_get_nodes",
+            "onnx_to_text=onnxsharp.command_line:cli_onnx_to_text",
         ],
     },
     scripts=[
