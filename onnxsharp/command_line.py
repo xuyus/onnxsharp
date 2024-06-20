@@ -1,4 +1,5 @@
 import argparse
+import onnx
 
 from onnxsharp import (
     Model,
@@ -114,3 +115,17 @@ def cli_onnx_get_nodes():
 
     for node in nodes:
         print(node)
+
+
+def cli_onnx_to_text():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+    args = parser.parse_args()
+
+    model_proto = onnx.load(args.model)
+    # onnx.save(model_proto, args.src + ".txt",format=Text)
+
+    text_file = open(args.model + ".txt", "w")
+    print(f"Text file written to {args.model + '.txt'}")
+    text_file.write(str(model_proto))
+    text_file.close()
