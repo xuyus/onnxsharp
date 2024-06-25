@@ -8,8 +8,9 @@ import onnx
 model_proto = onnx.load(
     # R"C:\dev\onnxsharp\0523_exp_ort_flash_attention_2_2048_run_001_execution_model_training.onnx"
     # R"C:\Users\pengwa\models\mistral_bingads\0522\0523_exp_ort_flash_attention_2_2048_run_001_execution_model_training.onnx"
-    R"C:\Users\pengwa\dev\onnx-sharp\bingads_model_0_optimized_pre_grad_training.onnx"
-    # R"C:\Users\pengwa\dev\onnx-sharp\bingads_model_0_execution_model_training.onnx"
+    # R"C:\Users\pengwa\dev\onnx-sharp\bingads_model_0_optimized_pre_grad_training.onnx"
+    R"C:\Users\pengwa\dev\onnx-sharp\bingads_model_0_execution_model_training.onnx"
+    # R"C:\Users\pengwa\dev\onnx-sharp\test\clipped_subgraph.onnx"
 )
 
 
@@ -77,7 +78,7 @@ s = "".join(type_ints)
 seq_len = len(s)
 print(seq_len)
 count_threshold = 2
-cluster_threshold = 2
+cluster_threshold = 8
 rets = {}
 
 
@@ -124,7 +125,7 @@ for i in range(seq_len):
 
         if c >= count_threshold:
             repeated_pattern[cur_substr] = Pattern(c, found_offsets, length)
-            print(f"found repated pattern: {cur_substr}, {c}, {length}")
+            # print(f"found repated pattern: {cur_substr}, {c}, {length}")
             break
 
 sorted_repeated_pattern = OrderedDict(
@@ -214,9 +215,9 @@ while has_update is True:
                 s = s.replace(cur_substr, "|" * len(cur_substr))
                 rets[cur_substr] = Pattern(c, found_offsets, length)
                 has_update = True
-                print(
-                    f"found: {_get_subgraph_str_from_encoded_str(cur_substr)}, {c}, {length}"
-                )
+                # print(
+                #     f"found: {_get_subgraph_str_from_encoded_str(cur_substr)}, {c}, {length}"
+                # )
                 # stop find the substring.
                 break
             j -= 1
@@ -234,7 +235,7 @@ sorted_rets = OrderedDict(sorted(rets.items(), key=lambda item: item[0], reverse
 subgraph_starts = {}
 
 for k, v in sorted_rets.items():
-    subgraph_str = _get_subgraph_str_from_encoded_str(k)
+    subgraph_str = k  # _get_subgraph_str_from_encoded_str(k)
     # print(subgraph_str, ':', v.freq)
     for x in v.start_offsets:
         subgraph_starts[x] = [v.length, subgraph_str]
@@ -295,11 +296,16 @@ prefix = """
 
     </style>
 
+
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.7.4/dagre.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.16.0/d3.js"></script>
 
-
+    <!-- Pull in JQuery dependencies -->
+    <link rel="stylesheet" href="tipsy.css">
+    <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="tipsy.js"></script>
 
     <h2>Graph Visualization</h2>
 
@@ -309,7 +315,6 @@ prefix = """
 
     <script>
 
-    const start = Date.now();
 
     // Create a new directed graph
     var g = new dagre.graphlib.Graph();
@@ -320,12 +325,24 @@ prefix = """
     // Default to assigning a new object as a label for each new edge.
     g.setDefaultEdgeLabel(function() { return {}; });
 
+    
+
+
 """
 
 
 postfix = """
+
+    // Add states to the graph, set labels, and style
+    Object.keys(states).forEach(function(state) {
+        var value = states[state];
+        value.label = state;
+        value.rx = value.ry = 5;
+        g.setNode(state, value);
+    });
+
     var svg = d3.select("svg"),
-        inner = svg.select("g");
+        inner = svg.append("g"); //svg.select("g");
 
     // Set up zoom support
     var zoom = d3.zoom().on("zoom", function() {
@@ -333,9 +350,6 @@ postfix = """
         });
     svg.call(zoom);
 
-    middle = Date.now()
-    const millis = middle - start;
-    console.log(`moddle elapsed = ${Math.floor(millis / 1000)}`);
 
 
     // Create the renderer
@@ -344,9 +358,17 @@ postfix = """
     // Run the renderer. This is what draws the final graph.
     render(inner, g);
 
-    after = Date.now()
-    const millis2 = after - middle;
-    console.log(`after elapsed = ${Math.floor(millis2 / 1000)}`);
+    // Simple function to style the tooltip for the given node.
+    var styleTooltip = function(name, description) {
+        return "<p class='name'>" + name + "</p><p class='description'>" + description + "</p>";
+    };
+
+    inner.selectAll("g.node")
+        .attr("title", function(v) { return styleTooltip(v, g.node(v).description) })
+        .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
+
+
+
 
     // Center the graph
     var initialScale = 0.75;
@@ -354,10 +376,7 @@ postfix = """
         (svg.attr("width") - g.graph().width * initialScale) / 2, 20).scale(initialScale));
 
     svg.attr('height', g.graph().height * initialScale + 40);
-    console.log('end');
-    end = Date.now()
-    const millis3 = end - after;
-    console.log(`end elapsed = ${Math.floor(millis3 / 1000)}`);
+
     </script>
 """
 
@@ -381,9 +400,9 @@ def name_to_color(name: str):
     return color
 
 
-def name_to_width_and_hight(name: str):
+def title_to_width_and_height(title: str):
     """According to the name length to calculate the width and height in pixel"""
-    width = max(144, len(name) * 10)
+    width = min(500, len(title) * 10)
     height = 40
     return width, height
 
@@ -415,7 +434,7 @@ while start_node_idx < node_count:
     # print(f"handle subgraph start_node_idx: {start_node_idx}")
     end_node_idx = start_node_idx + sorted_subgraph_starts[start_node_idx][0]
 
-    v_node_name = sorted_subgraph_starts[start_node_idx][1] + f"_{subggraph_index[0]}"
+    subgraph_pattern = sorted_subgraph_starts[start_node_idx][1]
     subggraph_index[0] += 1
 
     # print(f"count: {subgraph_starts[start_node_idx][0]}, v_node_name: {v_node_name}")
@@ -434,13 +453,14 @@ while start_node_idx < node_count:
         "Subgraph",
         subgraph_inputs,
         subgraph_outputs,
-        name=v_node_name,
+        name="Subgraph" + str(subggraph_index[0]),
+        doc_string=f"{subgraph_pattern}",
         domain="custom",
         opset_version=1,
         attributes=[],  # no attributes
     )
     node_protos.append(subgraph_node)
-    color_map[v_node_name] = name_to_color(sorted_subgraph_starts[start_node_idx][1])
+    # color_map[subgraph_node.name] = name_to_color(subgraph_pattern)
     # print(f"reduce number of nodes: {subgraph_starts[start_node_idx][0] - 1}")
 
     start_node_idx = end_node_idx
@@ -459,25 +479,48 @@ for node in node_protos:
 # print(node_output_to_node_map)
 
 
+def get_node_unique_id(node):
+    if node.op_type == "Subgraph":
+        return f"{_get_subgraph_str_from_encoded_str(node.doc_string)[:15]}_{node.name}"
+
+    return node.name
+
+
 # Open a file named gen.html in write mode
 f = open("gen4.html", "w")
 f.write(prefix + "\n")
+f.write("var states = {};")
 # loop through node_protos
 for node in node_protos:
     color_str = ""
-    if node.name in color_map:
-        color_str = f", style: 'fill: {color_map[node.name]}'"
+    description = ""
+    # if node.name in color_map:
+    if node.op_type == "Subgraph":
+        color_str = f", style: 'fill: {name_to_color(node.doc_string)}'"
 
-    w, h = name_to_width_and_hight(node.name)
-    node_str = f"g.setNode('{node.name}', {{ label: '{node.name}', width: {2* w}, height: {h}, labelStyle: 'font-size: 2em' {color_str}}});"
-    f.write(node_str + "\n")
+        description = (
+            "Pattern graph: "
+            + _get_subgraph_str_from_encoded_str(node.doc_string)
+            + "<br>"
+        )
+
+        description += f"Frequency: {sorted_rets[node.doc_string].freq}<br>"
+
+    title = get_node_unique_id(node)
+    w, h = title_to_width_and_height(title)
+    # node_str = f"g.setNode('{node.name}', {{ label: '{node.name}', width: {2* w}, height: {h}, labelStyle: 'font-size: 2em' {color_str}}});"
+    append_state_str = f"states['{title}'] = {{ description: `{description}`, width: {w}, height: {h} {color_str}}};"
+    f.write(append_state_str + "\n")
+
+
+for node in node_protos:
     for inp in node.input:
         # Ignore the graph input
         if inp not in node_output_to_node_map:
             continue
         # print(
         #     f"edge: {node_output_to_node_map[inp].name} -> {node.name} --> {node.op_type}")
-        edge_str = f"g.setEdge('{node_output_to_node_map[inp].name}', '{node.name}');"
+        edge_str = f"g.setEdge('{get_node_unique_id(node_output_to_node_map[inp])}', '{get_node_unique_id(node)}');"
         f.write(edge_str + "\n")
 
     # write the node to the file
