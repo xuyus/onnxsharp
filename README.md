@@ -3,11 +3,26 @@
 
 Operate on your ONNX model with ease.
 
+```bash
+
+pip install --upgrade onnxsharp # from pypi
+
+pip install -e . # from source
+
+```
+
+### Fast Renderer
+
+Open a graph containing thousands of nodes. The rough idea behind: delay loading subgraphs upon user interaction.
+
+```bash
+model-explorer <path-to-file>.onnx --extensions=onnxsharp.viz
+```
+
+
 ### Command Line Interface
 
 ```bash
-
-pip install --upgrade onnxsharp
 
 onnx_summarize --model model.onnx
 
