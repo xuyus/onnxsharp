@@ -23,3 +23,6 @@ from .torch_utils import (
     DataObserver,
 )
 from .ort_utils import ort_scan_tensor_from_dump, ort_get_tensor_from_dump
+
+
+from .viz import main

@@ -59,6 +59,7 @@ setup(
     author_email="",
     url="https://github.com/xuyus/onnx-sharp",
     install_requires=["numpy>=1.14.1", "onnx>=1.4.1", "pytest", "black"],
+    dependencies=["ai-edge-model-explorer"],
     entry_points={
         "console_scripts": [
             "onnx_summarize=onnxsharp.command_line:cli_onnx_summarize",
