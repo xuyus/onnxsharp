@@ -19,8 +19,8 @@ from typing import List, Set, Tuple
 import onnx
 
 
-count_threshold = 4
-cluster_threshold = 16
+count_threshold = 2
+cluster_threshold = 64
 
 
 class Encoder:
@@ -70,6 +70,7 @@ class Encoder:
 class NodeInfo:
     def __init__(
         self,
+        model_proto: onnx.ModelProto,
         op_type,
         name,
         inputs: List[str],
@@ -77,14 +78,27 @@ class NodeInfo:
         is_subgraph: bool,
         contained_graph_encoded: str,
         node_offset: int,
+        depth: int,
+        disable_sub_nodeinfo_detection: bool = False,
     ):
         self.op_type = op_type
         self.name = name
         self.inputs = copy.deepcopy(inputs)
         self.outputs = copy.deepcopy(outputs)
         self.is_subgraph = is_subgraph
-        self.contained_graph_encoded = contained_graph_encoded
+        self.contained_graph_encoded = copy.deepcopy(contained_graph_encoded)
         self.node_offset = node_offset  # inclusive
+        self.model_proto = model_proto
+        self.depth = depth
+
+        self.node_infos = []
+        if not disable_sub_nodeinfo_detection and self.is_subgraph:
+            self.node_infos = fold_graph(
+                self.contained_graph_encoded,
+                model_proto,
+                self.node_offset,
+                depth + 1,
+            )
 
     def __str__(self):
         return f"NodeInfo: {self.op_type}, {self.name}, {self.inputs}, {self.outputs}, {self.is_subgraph}, {self.contained_graph_encoded}, {self.node_offset}"
@@ -173,12 +187,11 @@ def get_external_inputs_and_outputs_for_subgraph(
 
 
 def fold_graph(
-    encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offset: int
+    s: str, model_proto: onnx.ModelProto, node_offset: int, depth: int = 0
 ) -> List[NodeInfo]:
 
     print(f"handle sequence {s}, its offset in original str: {node_offset}")
     seq_len = len(s)
-    count_threshold = 2
 
     # First round, find the most longest repeated subgraph pattern.
     repeated_pattern = {}
@@ -206,7 +219,7 @@ def fold_graph(
     sorted_repeated_pattern = OrderedDict(
         sorted(
             repeated_pattern.items(),
-            key=lambda item: item[1].length * 10000 + item[1].freq,
+            key=lambda item: item[1].freq,
             reverse=True,
         )
     )
@@ -236,7 +249,9 @@ def fold_graph(
                 subgraph_starts[x] = [v.length, cur_substr]
 
             rets[cur_substr] = Pattern(v.freq, v.start_offsets, v.length)
-            print(f"apply valid_combinations: {cur_substr}, {v.freq}, {v.length}")
+            print(
+                f"apply valid_combinations: {cur_substr}, frequency: {v.freq}, length: {v.length}"
+            )
 
     has_update = True
 
@@ -316,6 +331,7 @@ def fold_graph(
             normal_node_count += 1
             node_infos.append(
                 NodeInfo(
+                    model_proto,
                     cur_node.op_type,
                     cur_node.name,
                     cur_node.input,
@@ -323,6 +339,7 @@ def fold_graph(
                     False,
                     "",
                     start_node_idx + node_offset,
+                    depth,  # depth
                 )
             )
             start_node_idx += 1
@@ -333,9 +350,11 @@ def fold_graph(
         subggraph_index[0] += 1
 
         # subgraph = model_proto.graph.node[start_node_idx + node_offset: end_node_idx + node_offset]
+        # subgraph_inputs, subgraph_outputs = get_external_inputs_and_outputs_for_subgraph(subgraph)
 
         node_infos.append(
             NodeInfo(
+                model_proto,
                 "Subgraph",
                 "Subgraph" + str(subggraph_index[0]),
                 [],
@@ -343,6 +362,7 @@ def fold_graph(
                 True,
                 subgraph_pattern,
                 start_node_idx + node_offset,
+                depth,  # depth
             )
         )
 
