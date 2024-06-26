@@ -126,7 +126,7 @@ class ONNXAdapter(Adapter):
                 contiguous_node_infos = [node_info]
                 while (
                     i + 1 < len(node_infos)
-                    and node_info.is_subgraph
+                    and node_infos[i + 1].is_subgraph
                     and node_infos[i + 1].node_offset
                     == node_infos[i].node_offset
                     + len(node_infos[i].contained_graph_encoded)
