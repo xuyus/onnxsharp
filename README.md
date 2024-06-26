@@ -16,8 +16,10 @@ pip install -e . # from source
 Open a graph containing thousands of nodes. The rough idea behind: delay loading subgraphs upon user interaction.
 
 ```bash
+# pip install ai-edge-model-explorer # Requires Python3.9 and above; Windows usage requires WSL env.
 model-explorer <path-to-file>.onnx --extensions=onnxsharp.viz
 ```
+
 
 
 ### Command Line Interface
