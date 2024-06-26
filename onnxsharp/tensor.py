@@ -1,3 +1,18 @@
+# Copyright 2024 XUYUS
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 from collections import OrderedDict
 from black import validate_cell
 import onnx
@@ -6,6 +21,7 @@ import copy
 from .basics import enforce, Type
 from onnx.numpy_helper import to_array, from_array
 import numpy as np
+
 
 class TensorShape(object):
     def __init__(self, tensor_shape_proto) -> None:
@@ -138,7 +154,9 @@ class Tensor(object):
             onnx_pb.TensorProto.FLOAT,
             onnx_pb.TensorProto.COMPLEX64,
         ]:
-            t._float_data = np.array([f for f in tensor_proto.float_data], dtype=np.float32)
+            t._float_data = np.array(
+                [f for f in tensor_proto.float_data], dtype=np.float32
+            )
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.FLOAT16,
@@ -150,29 +168,39 @@ class Tensor(object):
             onnx_pb.TensorProto.UINT8,
             onnx_pb.TensorProto.UINT16,
         ]:
-            t._int32_data = np.array([i for i in tensor_proto.int32_data], dtype=np.int32)
+            t._int32_data = np.array(
+                [i for i in tensor_proto.int32_data], dtype=np.int32
+            )
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.INT64,
         ]:
-            t._int64_data = np.array([i for i in tensor_proto.int64_data], dtype=np.int64)
+            t._int64_data = np.array(
+                [i for i in tensor_proto.int64_data], dtype=np.int64
+            )
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.UINT32,
             onnx_pb.TensorProto.UINT64,
         ]:
-            t._uint64_data = np.array([i for i in tensor_proto.uint64_data], dtype=np.uint64)
+            t._uint64_data = np.array(
+                [i for i in tensor_proto.uint64_data], dtype=np.uint64
+            )
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.DOUBLE,
             onnx_pb.TensorProto.COMPLEX128,
         ]:
-            t._double_data = np.array([i for i in tensor_proto.double_data], dtype=np.float64)
+            t._double_data = np.array(
+                [i for i in tensor_proto.double_data], dtype=np.float64
+            )
 
         if tensor_proto.data_type in [
             onnx_pb.TensorProto.STRING,
         ]:
-            t._string_data = np.array([i for i in tensor_proto.string_data], dtype=np.object)
+            t._string_data = np.array(
+                [i for i in tensor_proto.string_data], dtype=np.object
+            )
 
         return t
 

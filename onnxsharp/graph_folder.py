@@ -1,3 +1,18 @@
+# Copyright 2024 XUYUS
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 from collections import OrderedDict
 import copy
 from typing import List, Set, Tuple
@@ -7,14 +22,14 @@ import onnx
 count_threshold = 4
 cluster_threshold = 16
 
+
 class Encoder:
     def __init__(self, model_proto: onnx.ModelProto):
         self._op_type_to_int = []
         self._model_proto = model_proto
-        for node in self._model_proto .graph.node:
+        for node in self._model_proto.graph.node:
             if node.op_type not in self._op_type_to_int:
                 self._op_type_to_int.append(node.op_type)
-
 
     def get_alphabet_from_int(self, int_val: int):
         if int_val >= 0 and int_val <= 9:
@@ -24,7 +39,6 @@ class Encoder:
         elif int_val >= 36 and int_val <= 61:
             return chr(int_val - 36 + ord("A"))
         raise ValueError(f"unsupported int_val: {int_val}")
-
 
     def get_op_type_from_alphabet(self, val: str):
         ord_v = ord(val)
@@ -39,7 +53,7 @@ class Encoder:
             raise ValueError(f"fail to convert {val}. ord_v: {ord_v}")
 
         return self._op_type_to_int[index]
-    
+
     def encode(self) -> str:
         type_ints = []
         # loop through the model_proto.graph.node
@@ -48,24 +62,33 @@ class Encoder:
             type_ints.append(self.get_alphabet_from_int(ascii_int))
 
         return "".join(type_ints)
-    
+
     def decode(self, s: str) -> List[str]:
         return [self.get_op_type_from_alphabet(c) for c in s]
 
 
 class NodeInfo:
-    def __init__(self, op_type, name, inputs: List[str], outputs: List[str], is_subgraph: bool, contained_graph_encoded: str, node_offset: int):
+    def __init__(
+        self,
+        op_type,
+        name,
+        inputs: List[str],
+        outputs: List[str],
+        is_subgraph: bool,
+        contained_graph_encoded: str,
+        node_offset: int,
+    ):
         self.op_type = op_type
         self.name = name
         self.inputs = copy.deepcopy(inputs)
         self.outputs = copy.deepcopy(outputs)
         self.is_subgraph = is_subgraph
         self.contained_graph_encoded = contained_graph_encoded
-        self.node_offset = node_offset # inclusive
+        self.node_offset = node_offset  # inclusive
 
     def __str__(self):
         return f"NodeInfo: {self.op_type}, {self.name}, {self.inputs}, {self.outputs}, {self.is_subgraph}, {self.contained_graph_encoded}, {self.node_offset}"
-    
+
     def __repr__(self):
         return self.__str__()
 
@@ -92,7 +115,6 @@ def find_substring_appearances(long_string, substring):
     return count, offsets
 
 
-
 def check_range_overlap(
     range_set_1: List[Tuple[int, int]],
     lengh_1: int,
@@ -110,7 +132,6 @@ def check_range_overlap(
     return False
 
 
-
 class Pattern:
     def __init__(self, freq, start_offsets, length):
         self.freq = freq
@@ -118,7 +139,9 @@ class Pattern:
         self.length = length
 
 
-def get_external_inputs_and_outputs_for_subgraph(subgraph: List[onnx.NodeProto]) -> Tuple[Set[str], Set[str]]:
+def get_external_inputs_and_outputs_for_subgraph(
+    subgraph: List[onnx.NodeProto],
+) -> Tuple[Set[str], Set[str]]:
     # Loop the node for the given subgraph,
     # 1. if a node output is generated but not used by any other node in current subgraph,
     #     Then this output is subgraph output;
@@ -149,14 +172,13 @@ def get_external_inputs_and_outputs_for_subgraph(subgraph: List[onnx.NodeProto])
     return subgraph_inputs, subgraph_outputs
 
 
-
-def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offset: int) -> List[NodeInfo]:
-
+def fold_graph(
+    encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offset: int
+) -> List[NodeInfo]:
 
     print(f"handle sequence {s}, its offset in original str: {node_offset}")
     seq_len = len(s)
     count_threshold = 2
-
 
     # First round, find the most longest repeated subgraph pattern.
     repeated_pattern = {}
@@ -203,7 +225,6 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
 
         if found_conflict is False:
             valid_combinations[k] = copy.deepcopy(v)
-                    
 
     rets = {}
     subgraph_starts = {}
@@ -216,7 +237,6 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
 
             rets[cur_substr] = Pattern(v.freq, v.start_offsets, v.length)
             print(f"apply valid_combinations: {cur_substr}, {v.freq}, {v.length}")
-
 
     has_update = True
 
@@ -265,10 +285,7 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
 
     print(f"s: {s}")
 
-    sorted_rets = rets # OrderedDict(sorted(rets.items(), key=lambda item: item[0], reverse=True))
-
-
-    
+    sorted_rets = rets  # OrderedDict(sorted(rets.items(), key=lambda item: item[0], reverse=True))
 
     for k, v in sorted_rets.items():
         subgraph_str = k  # _get_subgraph_str_from_encoded_str(k)
@@ -279,10 +296,6 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
     sorted_subgraph_starts = OrderedDict(
         sorted(subgraph_starts.items(), key=lambda item: item[0], reverse=False)
     )
-
-
-
-
 
     start_node_idx = 0
     node_count = len(s)
@@ -300,12 +313,20 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
                 start_node_idx < len(s) and s[start_node_idx] != "|"
             ), f"Failure: found | at index {start_node_idx}: {s[start_node_idx] if start_node_idx < len(s) else 'out of range'}, s: {s}"
 
-
             normal_node_count += 1
-            node_infos.append(NodeInfo(cur_node.op_type, cur_node.name, cur_node.input, cur_node.output, False, "", start_node_idx + node_offset)) 
+            node_infos.append(
+                NodeInfo(
+                    cur_node.op_type,
+                    cur_node.name,
+                    cur_node.input,
+                    cur_node.output,
+                    False,
+                    "",
+                    start_node_idx + node_offset,
+                )
+            )
             start_node_idx += 1
             continue
-
 
         end_node_idx = start_node_idx + sorted_subgraph_starts[start_node_idx][0]
         subgraph_pattern = sorted_subgraph_starts[start_node_idx][1]
@@ -313,10 +334,17 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
 
         # subgraph = model_proto.graph.node[start_node_idx + node_offset: end_node_idx + node_offset]
 
-
-
-        node_infos.append(NodeInfo('Subgraph', "Subgraph" + str(subggraph_index[0]), [], [], True, subgraph_pattern, start_node_idx + node_offset))
-
+        node_infos.append(
+            NodeInfo(
+                "Subgraph",
+                "Subgraph" + str(subggraph_index[0]),
+                [],
+                [],
+                True,
+                subgraph_pattern,
+                start_node_idx + node_offset,
+            )
+        )
 
         start_node_idx = end_node_idx
 
@@ -326,4 +354,3 @@ def fold_graph(encoder: Encoder, s: str, model_proto: onnx.ModelProto, node_offs
         f"reduced node count to {len(node_infos)}, normal_node_count: {normal_node_count}, subgraph_node_count: {subgraph_node_count}"
     )
     return node_infos
-
