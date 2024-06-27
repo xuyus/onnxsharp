@@ -14,7 +14,7 @@
 # ==============================================================================
 
 from collections import OrderedDict
-from typing import List, Tuple
+from typing import Callable, List, Optional, Tuple
 from black import validate_cell
 import onnx
 from onnx import helper, defs, numpy_helper, checker
@@ -44,7 +44,7 @@ class Graph(object):
         # repeated NodeProto node = 1;
         for node_proto in graph_proto.node:
             n = Node.from_proto(g, node_proto)
-            g.update_node_mapping(n)
+            g._update_node_mapping(n)
 
         # string name = 2;
         g._name = graph_proto.name
@@ -102,7 +102,7 @@ class Graph(object):
 
         return g
 
-    def update_node_mapping(self, new_node: Node):
+    def _update_node_mapping(self, new_node: Node):
         self._node_name_mapping[new_node.name] = new_node
         for index, o in enumerate(new_node.output_arg_names):
             # Skip if the output arg is null.
@@ -147,8 +147,16 @@ class Graph(object):
             func(n)
 
     @property
+    def nodes(self):
+        return self._node_name_mapping.values()
+
+    @property
     def input_names(self):
         return self._input_map.keys()
+
+    @property
+    def initializer_names(self):
+        return self._initializer_map.keys()
 
     @property
     def output_names(self):
@@ -324,7 +332,7 @@ class Graph(object):
             self.add_input(name, value_info)
 
         n = copy.deepcopy(node)
-        self.update_node_mapping(n)
+        self._update_node_mapping(n)
         print(f"add_node_copy_from>>>exiting for node {n}.")
 
     def add_node(
@@ -379,7 +387,7 @@ class Graph(object):
             n._attr[attr_name] = attr_value
 
         n._doc_string = doc_string
-        self.update_node_mapping(n)
+        self._update_node_mapping(n)
         return n
 
     def remove_input(self, input_arg_name):
@@ -630,3 +638,95 @@ class Graph(object):
         pp.pprint(sorted_tuples)
 
         return
+
+    def reverse_dfs_from(
+        self,
+        from_nodes: List[Node],
+        enter: Optional[Callable[[Node], None]],
+        leave: Optional[Callable[[Node], None]],
+        comp: Optional[Callable[[Node, Node], bool]],
+        stop: Optional[
+            Callable[
+                [
+                    Node,  # from node
+                    Node,  # to node
+                ],
+                bool,
+            ]
+        ] = None,
+    ):
+        """Perform a reverse DFS from the given nodes.
+
+        Args:
+            from_nodes: The nodes to start the DFS from.
+            enter: The function to call when entering a node.
+            leave: The function to call when leaving a node.
+            comp: The function to compare two nodes.
+            stop: The function to determine whether to stop the DFS.
+        """
+        node_vec = []
+        node_vec.extend(from_nodes)
+
+        self._reverse_dfs_from(node_vec, enter, leave, comp, stop)
+
+    def _reverse_dfs_from(
+        self,
+        from_nodes: List[Node],
+        enter: Optional[Callable[[Node], None]],
+        leave: Optional[Callable[[Node], None]],
+        comp: Optional[Callable[[Node], bool]],
+        stop: Optional[
+            Callable[
+                [
+                    Node,  # from node
+                    Node,  # to node
+                ],
+                bool,
+            ]
+        ] = None,
+    ):
+
+        stack = []
+        for node in from_nodes:
+            stack.append([node, False])
+
+        visited = {}
+        while stack:
+            last_node, is_leave = stack.pop()
+
+            if last_node is None:
+                continue
+
+            if is_leave:
+                leave(last_node)
+                continue
+
+            if last_node in visited:
+                continue
+
+            visited[last_node] = True
+
+            if enter:
+                enter(last_node)
+
+            if leave:
+                stack.append([last_node, True])
+
+            if comp:
+                sorted_nodes = [
+                    n
+                    for n, _ in last_node.input_nodes
+                    if n and not (stop and stop(last_node, n))
+                ]
+                sorted_nodes.sort(key=comp)
+                for in_node in sorted_nodes:
+                    if in_node not in visited:
+                        stack.append([in_node, False])
+            else:
+                for in_node, _ in last_node.input_nodes:
+                    if (
+                        in_node
+                        and not (stop and stop(last_node, in_node))
+                        and in_node not in visited
+                    ):
+                        stack.append([in_node, False])

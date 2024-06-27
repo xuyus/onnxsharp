@@ -17,6 +17,7 @@ from collections import OrderedDict
 import copy
 from typing import List, Set, Tuple
 import onnx
+from onnxsharp import Node
 
 
 count_threshold = 2
@@ -24,12 +25,12 @@ cluster_threshold = 64
 
 
 class Encoder:
-    def __init__(self, model_proto: onnx.ModelProto):
+    def __init__(self, node_list: List[Node]):
         self._op_type_to_int = []
-        self._model_proto = model_proto
-        for node in self._model_proto.graph.node:
-            if node.op_type not in self._op_type_to_int:
-                self._op_type_to_int.append(node.op_type)
+        self._node_list = node_list
+        for node in self._node_list:
+            if node.type not in self._op_type_to_int:
+                self._op_type_to_int.append(node.type)
 
     def get_alphabet_from_int(self, int_val: int):
         if int_val >= 0 and int_val <= 9:
@@ -57,8 +58,8 @@ class Encoder:
     def encode(self) -> str:
         type_ints = []
         # loop through the model_proto.graph.node
-        for node in self._model_proto.graph.node:
-            ascii_int = self._op_type_to_int.index(node.op_type)
+        for node in self._node_list:
+            ascii_int = self._op_type_to_int.index(node.type)
             type_ints.append(self.get_alphabet_from_int(ascii_int))
 
         return "".join(type_ints)
@@ -187,7 +188,7 @@ def get_external_inputs_and_outputs_for_subgraph(
 
 
 def fold_graph(
-    s: str, model_proto: onnx.ModelProto, node_offset: int, depth: int = 0
+    s: str, node_list: List[Node], node_offset: int, depth: int = 0
 ) -> List[NodeInfo]:
 
     print(f"handle sequence {s}, its offset in original str: {node_offset}")
@@ -323,7 +324,7 @@ def fold_graph(
 
         if start_node_idx not in sorted_subgraph_starts:
             # print(f"normal handle start_node_idx: {start_node_idx}")
-            cur_node = model_proto.graph.node[start_node_idx + node_offset]
+            cur_node = node_list[start_node_idx + node_offset]
             assert (
                 start_node_idx < len(s) and s[start_node_idx] != "|"
             ), f"Failure: found | at index {start_node_idx}: {s[start_node_idx] if start_node_idx < len(s) else 'out of range'}, s: {s}"
@@ -331,11 +332,11 @@ def fold_graph(
             normal_node_count += 1
             node_infos.append(
                 NodeInfo(
-                    model_proto,
-                    cur_node.op_type,
+                    node_list,
+                    cur_node.type,
                     cur_node.name,
-                    cur_node.input,
-                    cur_node.output,
+                    cur_node.input_arg_names,
+                    cur_node.output_arg_names,
                     False,
                     "",
                     start_node_idx + node_offset,
@@ -354,7 +355,7 @@ def fold_graph(
 
         node_infos.append(
             NodeInfo(
-                model_proto,
+                node_list,
                 "Subgraph",
                 "Subgraph" + str(subggraph_index[0]),
                 [],

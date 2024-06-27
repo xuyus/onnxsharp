@@ -191,10 +191,22 @@ class NodeArg(object):
     def __repr__(self) -> str:
         return str(self)
 
+    def __eq__(self, other) -> bool:
+        return self._name == other._name
+
+    def __hash__(self):
+        return hash(self._name)
+
+
+global_node_index_counter = [0]
+
 
 class Node(object):
     def __init__(self) -> None:
         self._g = None
+
+        global_node_index_counter[0] += 1
+        self.index = global_node_index_counter[0]
 
         ## ONNX Proto
 
@@ -300,6 +312,49 @@ class Node(object):
             "index out of range",
         )
         return self._input_args[index]
+
+    @property
+    def input_nodes(self):
+        rets = []
+
+        for dest_input_index, input_arg_name in enumerate(self.input_arg_names):
+            if input_arg_name is None:
+                rets.append((None, None))
+                continue
+
+            if not self._g.is_activation(input_arg_name):
+                rets.append((None, None))
+                continue
+
+            n, src_output_index = self._g.get_node_with_output_arg_name(input_arg_name)
+            rets.append((n, (src_output_index, dest_input_index)))
+
+        return rets
+
+    @property
+    def input_edge_count(self):
+        """Return the number of input edges of the node, ignore None from input_nodes."""
+        return len([n for n, _ in self.input_nodes if n is not None])
+
+    @property
+    def output_nodes(self):
+        rets = []
+        for src_out_index, output_arg_name in enumerate(self.output_arg_names):
+            if not output_arg_name:
+                continue
+
+            for _, n in self._g._node_name_mapping.items():
+                dest_in_indices = [
+                    i for i, n in enumerate(n.input_arg_names) if n == output_arg_name
+                ]
+                for dest_in_index in dest_in_indices:
+                    rets.append((n, (src_out_index, dest_in_index)))
+
+        return rets
+
+    @property
+    def output_edge_count(self):
+        return len(self.output_nodes)
 
     def to_proto(self):
         node_proto = helper.make_node(

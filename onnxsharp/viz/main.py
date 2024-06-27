@@ -1,7 +1,8 @@
-from typing import Dict
+from typing import Dict, List
 from model_explorer import Adapter, AdapterMetadata, ModelExplorerGraphs, graph_builder
-import onnx
+
 from onnxsharp.graph_folder import fold_graph, Encoder, NodeInfo
+from onnxsharp import Model, memory_efficient_topological_sort, Node
 
 
 class ONNXAdapter(Adapter):
@@ -65,7 +66,7 @@ class ONNXAdapter(Adapter):
             if inp in node_output_to_node_map:  # skip the graph inputs.
                 new_node.incomingEdges.append(
                     graph_builder.IncomingEdge(
-                        sourceNodeId=f"{node_output_to_node_map[inp].name}({node_output_to_node_map[inp].op_type})"
+                        sourceNodeId=f"{node_output_to_node_map[inp].name}({node_output_to_node_map[inp].type})"
                     )
                 )
             else:
@@ -75,41 +76,42 @@ class ONNXAdapter(Adapter):
         graph.nodes.append(new_node)
 
     def convert(self, model_path: str, settings: Dict) -> ModelExplorerGraphs:
-        model_proto = onnx.load(model_path)
+        # model_proto = onnx.load(model_path)
+        m = Model.load_model(model_path)
+        node_orders: List[Node] = []
+        memory_efficient_topological_sort(m._graph, node_orders)
 
-        encoder = Encoder(model_proto)
+        encoder = Encoder(node_orders)
         encoded_str = encoder.encode()
 
         # Create a graph for my road trip.
         graph = graph_builder.Graph(id="onnx_model")
 
         node_output_to_node_map = {}
-        for node in model_proto.graph.node:
+        for node in node_orders:
 
-            for output in node.output:
+            for output in node.output_arg_names:
                 node_output_to_node_map[output] = node
 
         # Create node for graph inputs, initializers and outputs.
         graph_inputs = []
-        for input in model_proto.graph.input:
-            new_node = graph_builder.GraphNode(
-                id=input.name, label=input.name, namespace=""
-            )
+        for input in m._graph.input_names:
+            new_node = graph_builder.GraphNode(id=input, label=input, namespace="")
             graph.nodes.append(new_node)
-            graph_inputs.append(input.name)
+            graph_inputs.append(input)
 
-        for initializer in model_proto.graph.initializer:
-            if initializer.name in graph_inputs:
+        for initializer in m._graph.initializer_names:
+            if initializer in graph_inputs:
                 continue
             new_node = graph_builder.GraphNode(
-                id=initializer.name, label=initializer.name, namespace=""
+                id=initializer, label=initializer, namespace=""
             )
             graph.nodes.append(new_node)
 
         # self.handle_layer_recursively(
         #     "", 0, encoder, encoded_str, model_proto, node_output_to_node_map, 0, graph
         # )
-        node_infos = fold_graph(encoded_str, model_proto, 0, 0)
+        node_infos = fold_graph(encoded_str, node_orders, 0, 0)
 
         if len(node_infos) > 1:
             print(f"Found {len(node_infos)} subgraphs")
@@ -166,15 +168,13 @@ class ONNXAdapter(Adapter):
             self.node_info_to_node(node_info, "", node_output_to_node_map, graph)
 
         # Add incoming edge for output nodes for the graph.
-        for output in model_proto.graph.output:
-            assert output.name in node_output_to_node_map
-            new_node = graph_builder.GraphNode(
-                id=output.name, label=output.name, namespace=""
-            )
+        for output in m._graph.output_names:
+            assert output in node_output_to_node_map
+            new_node = graph_builder.GraphNode(id=output, label=output, namespace="")
             graph.nodes.append(new_node)
             new_node.incomingEdges.append(
                 graph_builder.IncomingEdge(
-                    sourceNodeId=f"{node_output_to_node_map[output.name].name}({node_output_to_node_map[output.name].op_type})"
+                    sourceNodeId=f"{node_output_to_node_map[output].name}({node_output_to_node_map[output].type})"
                 )
             )
 

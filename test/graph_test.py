@@ -119,3 +119,30 @@ def test_save_model():
     m.save_model("./saved_model.onnx")
     m.save_model("./saved_model_external_data.onnx", save_as_external_data=True)
     m.save_model_to_string("./saved_model.txt")
+
+
+def test_mem_efficient_sort():
+    from onnxsharp import Model, memory_efficient_topological_sort
+
+    # m = Model.load_model("/home/pengwa/onnxsharp/test/testdata/ort_sample_model.onnx")
+    src = "../0523_exp_ort_flash_attention_2_2048_run_001_optimized_pre_grad_training.onnx"
+    src = "/home/pengwa/onnxsharp/0523_exp_ort_flash_attention_2_2048_run_001_execution_model_training.onnx"
+    m = Model.load_model(src)
+    node_orders = []
+    memory_efficient_topological_sort(m._graph, node_orders)
+    # print(node_orders)
+
+
+def main():
+    # test_subgraph_extraction()
+    # test_clip_subgraph_from_output_arg()
+    # test_node_print()
+    # test_node_include_shape_print()
+    # test_desc_graph_inputs()
+    # test_auto_clustering()
+    # test_save_model()
+    test_mem_efficient_sort()
+
+
+if __name__ == "__main__":
+    main()

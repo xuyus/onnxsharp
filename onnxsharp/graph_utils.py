@@ -115,7 +115,7 @@ def create_graph_from_logical_subgraph(
         n = g._node_name_mapping[node_name]
         print(f"node>>{index+1} / {node_count}, {n.name} - {n.type}")
         new_n = copy.deepcopy(n)
-        new_g.update_node_mapping(new_n)
+        new_g._update_node_mapping(new_n)
 
     new_g._name = g._name
 

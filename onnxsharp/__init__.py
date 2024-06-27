@@ -25,4 +25,4 @@ from .torch_utils import (
 from .ort_utils import ort_scan_tensor_from_dump, ort_get_tensor_from_dump
 
 
-from .viz import main
+from .graph_sort import memory_efficient_topological_sort
