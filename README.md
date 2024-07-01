@@ -3,6 +3,8 @@
 
 Operate on your ONNX model with ease.
 
+### Installation
+
 ```bash
 
 pip install --upgrade onnxsharp # from pypi
@@ -11,7 +13,7 @@ pip install -e . # from source
 
 ```
 
-### Big Graph Renderer (Rendering from Infeasible to Feasible)
+### Big Graph Renderer (From Infeasible to Feasible)
 
 Open a graph containing thousands of nodes. The rough idea behind: delay loading subgraphs upon user interaction.
 
@@ -145,12 +147,4 @@ m._graph.add_output()
 
 ```
 
-## Installation
 
-Dev Install
-
-    pip install -e .
-
-Install from PyPI
-
-    pip install --upgrade onnxsharp
