@@ -60,6 +60,13 @@ class ONNXAdapter(Adapter):
             id=node_id, label=node_id, namespace=current_ns
         )
 
+        if not node_info.is_subgraph:
+            nodes_attrs = node_info.model_proto[node_info.node_offset]._attr
+            for attr_name, attr in nodes_attrs.items():
+                new_node.attrs.append(
+                    graph_builder.KeyValue(key=attr_name, value=str(attr._value))
+                )
+
         # print(f"Adding node {node_id} with {current_ns} namespace")
 
         for inp in node_info.inputs:

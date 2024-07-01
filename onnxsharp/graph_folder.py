@@ -71,7 +71,7 @@ class Encoder:
 class NodeInfo:
     def __init__(
         self,
-        model_proto: onnx.ModelProto,
+        model_proto: List[Node],
         op_type,
         name,
         inputs: List[str],
