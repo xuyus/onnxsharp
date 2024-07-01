@@ -21,6 +21,7 @@ pip install ai-edge-model-explorer # Requires Python3.9 and above; Windows usage
 model-explorer <path-to-file>.onnx --extensions=onnxsharp.viz
 ```
 
+![image](https://github.com/xuyus/onnxsharp/assets/10530022/55bcf929-7db6-4dc3-a47b-19ceb34eed83)
 
 
 ### Command Line Interface
