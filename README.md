@@ -11,7 +11,7 @@ pip install -e . # from source
 
 ```
 
-### Fast Renderer
+### Big Graph Renderer (Rendering from Infeasible to Feasible)
 
 Open a graph containing thousands of nodes. The rough idea behind: delay loading subgraphs upon user interaction.
 
