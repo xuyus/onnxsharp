@@ -13,7 +13,7 @@ pip install -e . # from source
 
 ```
 
-### Big Graph Renderer (From Infeasible to Feasible)
+### Big Graph Renderer ("Infeasible" to "Feasible")
 
 Open a graph containing thousands of nodes. The rough idea behind: delay loading subgraphs upon user interaction.
 
